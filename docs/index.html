@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pro Crypto Vault</title>
+    <style>
+        :root { --primary: #2563eb; --danger: #dc2626; --bg: #f8fafc; --accent: #7c3aed; }
+        body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); padding: 20px; color: #1e293b; line-height: 1.5; }
+        .container { max-width: 1000px; margin: auto; background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); }
+        .section { margin-bottom: 20px; padding: 16px; border: 1px solid #e2e8f0; border-radius: 8px; }
+        
+        input, button { padding: 10px; margin: 5px 0; border-radius: 6px; border: 1px solid #cbd5e1; }
+        button { cursor: pointer; background: var(--primary); color: white; border: none; font-weight: 600; }
+        .btn-sm { padding: 4px 8px; font-size: 0.75rem; margin-left: 5px; }
+        .btn-rename { background: #ca8a04; }
+        .btn-delete { background: var(--danger); }
+        
+        .search-bar { width: 100%; padding: 12px; font-size: 1rem; border: 2px solid var(--primary); margin-bottom: 15px; box-sizing: border-box; }
+        
+        /* Tree & Tags */
+        .tree-node { margin-left: 20px; border-left: 1px dashed #cbd5e1; padding-left: 10px; }
+        .folder-name { font-weight: bold; color: #475569; display: block; margin: 8px 0; }
+        .file-item { display: flex; align-items: center; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #f1f5f9; }
+        .tag { background: #ede9fe; color: var(--accent); padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; margin-left: 5px; font-weight: bold; }
+        .file-info { display: flex; align-items: center; flex-wrap: wrap; gap: 5px; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>🔒 Pro Encrypted Vault</h2>
+    
+    <div class="section">
+        <input type="password" id="password" placeholder="Vault Password" style="width: 200px;">
+        <button onclick="downloadVault()" style="background: #059669;">Export (.vault)</button>
+        <input type="file" id="vaultUpload" accept=".vault" style="width: 180px;">
+        <button onclick="loadVault()" style="background: #4b5563;">Import</button>
+    </div>
+
+    <div class="section" style="background: #f8fafc;">
+        <strong>Upload to Path</strong><br>
+        <input type="text" id="folderPath" placeholder="Path (e.g. Work/Docs)">
+        <input type="text" id="fileTags" placeholder="Tags (comma separated)">
+        <input type="file" id="fileInput">
+        <button onclick="addFile()">Add File</button>
+    </div>
+
+    <div class="section">
+        <input type="text" id="searchInput" class="search-bar" placeholder="🔍 Search by name or #tag..." oninput="renderTree()">
+        <div id="treeContainer"></div>
+    </div>
+</div>
+
+<script>
+    let vaultFiles = [];
+
+    async function deriveKey(password, salt) {
+        const encoder = new TextEncoder();
+        const baseKey = await crypto.subtle.importKey("raw", encoder.encode(password), "PBKDF2", false, ["deriveKey"]);
+        return crypto.subtle.deriveKey(
+            { name: "PBKDF2", salt, iterations: 100000, hash: "SHA-256" },
+            baseKey, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]
+        );
+    }
+
+    function addFile() {
+        const fileInput = document.getElementById('fileInput');
+        const path = document.getElementById('folderPath').value.trim() || "Root";
+        const tags = document.getElementById('fileTags').value.split(',').map(t => t.trim()).filter(t => t);
+        
+        if (!fileInput.files[0]) return alert("Select file");
+
+        const file = fileInput.files[0];
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            vaultFiles.push({
+                id: btoa(Math.random().toString()).slice(0, 8),
+                name: file.name,
+                path: path,
+                tags: tags,
+                content: e.target.result
+            });
+            renderTree();
+        };
+        reader.readAsDataURL(file);
+    }
+
+    function deleteFile(id) {
+        if(confirm("Delete this file?")) {
+            vaultFiles = vaultFiles.filter(f => f.id !== id);
+            renderTree();
+        }
+    }
+
+    function renameFile(id) {
+        const file = vaultFiles.find(f => f.id === id);
+        const newName = prompt("Enter new filename:", file.name);
+        if (newName) {
+            file.name = newName;
+            renderTree();
+        }
+    }
+
+    function renderTree() {
+        const container = document.getElementById('treeContainer');
+        const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+        container.innerHTML = "";
+
+        // Filter files based on search
+        const filteredFiles = vaultFiles.filter(f => {
+            const matchesName = f.name.toLowerCase().includes(searchTerm);
+            const matchesTags = f.tags.some(t => t.toLowerCase().includes(searchTerm));
+            return matchesName || matchesTags;
+        });
+
+        const tree = {};
+        filteredFiles.forEach(file => {
+            const parts = file.path.split('/').filter(p => p);
+            let current = tree;
+            parts.forEach(part => {
+                if (!current[part]) current[part] = { _files: [], _folders: {} };
+                current = current[part]._folders;
+            });
+            
+            let ref = tree;
+            parts.forEach((part, idx) => {
+                if (idx === parts.length - 1) {
+                    if (!ref[part]) ref[part] = { _files: [], _folders: {} };
+                    ref[part]._files.push(file);
+                } else { ref = ref[part]._folders; }
+            });
+        });
+
+        const buildHTML = (obj) => {
+            const div = document.createElement('div');
+            div.className = "tree-node";
+            for (const key in obj) {
+                const node = document.createElement('div');
+                node.innerHTML = `<span class="folder-name">📁 ${key}</span>`;
+                if (Object.keys(obj[key]._folders).length > 0) node.appendChild(buildHTML(obj[key]._folders));
+                
+                obj[key]._files.forEach(file => {
+                    const fDiv = document.createElement('div');
+                    fDiv.className = "file-item";
+                    fDiv.innerHTML = `
+                        <div class="file-info">
+                            <a href="${file.content}" download="${file.name}" style="text-decoration:none; color:var(--primary)">📄 ${file.name}</a>
+                            ${file.tags.map(t => `<span class="tag">#${t}</span>`).join('')}
+                        </div>
+                        <div>
+                            <button class="btn-sm btn-rename" onclick="renameFile('${file.id}')">Rename</button>
+                            <button class="btn-sm btn-delete" onclick="deleteFile('${file.id}')">Delete</button>
+                        </div>
+                    `;
+                    node.appendChild(fDiv);
+                });
+                div.appendChild(node);
+            }
+            return div;
+        };
+        container.appendChild(buildHTML(tree));
+    }
+
+    async function downloadVault() {
+        const password = document.getElementById('password').value;
+        if (!password) return alert("Password required");
+        const salt = crypto.getRandomValues(new Uint8Array(16));
+        const iv = crypto.getRandomValues(new Uint8Array(12));
+        const key = await deriveKey(password, salt);
+        const encrypted = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, new TextEncoder().encode(JSON.stringify(vaultFiles)));
+        const blob = new Blob([salt, iv, encrypted], { type: "application/octet-stream" });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `vault_${Date.now()}.vault`;
+        a.click();
+    }
+
+    async function loadVault() {
+        const password = document.getElementById('password').value;
+        const file = document.getElementById('vaultUpload').files[0];
+        if (!password || !file) return alert("Password and file required");
+        const buffer = await file.arrayBuffer();
+        const salt = new Uint8Array(buffer.slice(0, 16));
+        const iv = new Uint8Array(buffer.slice(16, 28));
+        const key = await deriveKey(password, salt);
+        try {
+            const dec = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, buffer.slice(28));
+            vaultFiles = JSON.parse(new TextDecoder().decode(dec));
+            renderTree();
+        } catch (e) { alert("Decryption failed"); }
+    }
+</script>
+</body>
+</html>
