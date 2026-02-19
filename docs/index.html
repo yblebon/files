@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Secure Vault Manager Pro</title>
     <style>
-        :root { --primary: #2563eb; --danger: #dc2626; --bg: #f8fafc; --accent: #7c3aed; --success: #059669; }
+        :root { --primary: #2563eb; --danger: #dc2626; --bg: #f8fafc; --accent: #7c3aed; --success: #059669; --move: #eab308; }
         body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); padding: 20px; color: #1e293b; display: flex; flex-direction: column; min-height: 95vh; }
         .container { max-width: 1000px; margin: auto; background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); flex-grow: 1; }
         .section { margin-bottom: 20px; padding: 16px; border: 1px solid #e2e8f0; border-radius: 8px; }
@@ -16,9 +16,11 @@
         input, button { padding: 10px; margin: 5px 0; border-radius: 6px; border: 1px solid #cbd5e1; }
         button { cursor: pointer; background: var(--primary); color: white; border: none; font-weight: 600; transition: transform 0.1s; }
         button:active { transform: scale(0.98); }
-        .btn-sm { padding: 4px 8px; font-size: 0.75rem; margin-left: 5px; }
+        .btn-sm { padding: 4px 8px; font-size: 0.75rem; margin-left: 4px; }
         .btn-rename { background: #ca8a04; }
         .btn-delete { background: var(--danger); }
+        .btn-tags { background: var(--accent); }
+        .btn-move { background: var(--move); }
         
         /* Password Strength Meter */
         .strength-container { margin-top: 5px; width: 200px; }
@@ -29,19 +31,40 @@
         
         /* Tree & UI */
         .tree-node { margin-left: 20px; border-left: 1px dashed #cbd5e1; padding-left: 10px; }
-        .folder-name { font-weight: bold; color: #475569; display: block; margin: 8px 0; }
+        .folder-name { font-weight: bold; color: #475569; display: block; margin: 8px 0; cursor: pointer; }
+        .folder-name:hover { color: var(--primary); text-decoration: underline; }
         .file-item { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f1f5f9; }
         .tag { background: #ede9fe; color: var(--accent); padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; margin-left: 5px; font-weight: bold; }
         .timestamp { color: #94a3b8; font-size: 0.75rem; margin-left: 10px; font-style: italic; }
         
         footer { margin-top: 40px; text-align: center; color: #94a3b8; font-size: 0.85rem; border-top: 1px solid #e2e8f0; padding-top: 20px; }
+        
+        /* Security Warning */
+        #securityWarning {
+            background: #fee2e2;
+            color: #991b1b;
+            padding: 14px 16px;
+            border-radius: 8px;
+            margin-bottom: 24px;
+            border: 2px solid #ef4444;
+            font-size: 0.95rem;
+            line-height: 1.4;
+        }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <input type="text" id="vaultTitle" class="vault-header" value="Personal Secure Vault" title="Rename Vault">
-    
+    <!-- SECURITY WARNING -->
+    <div id="securityWarning">
+        <strong>⚠️ Security Warning – Read This</strong><br>
+        This is a <strong>client-side only</strong> vault. All files stay <strong>in plain text in browser memory</strong> while the page is open.<br>
+        Data is encrypted <strong>only when you click Export</strong>.<br>
+        <strong>Always close the vault when finished and export regularly.</strong>
+    </div>
+
+    <input type="text" id="vaultTitle" class="vault-header" value="Personal Secure Vault" title="Click to rename vault">
+
     <div class="section">
         <div style="display:inline-block; vertical-align: top;">
             <input type="password" id="password" placeholder="Vault Password" style="width: 200px;" oninput="updateStrength()">
@@ -53,14 +76,15 @@
         <button onclick="downloadVault()" style="background: var(--success);">Export (.vault)</button>
         <input type="file" id="vaultUpload" accept=".vault" style="width: 180px;">
         <button onclick="loadVault()" style="background: #4b5563;">Import</button>
+        <button onclick="closeVault()" style="background: #6b7280;">Close Vault</button>
     </div>
 
     <div class="section" style="background: #f8fafc;">
-        <strong>New File Upload</strong><br>
+        <strong>New Files Upload <small>(multiple files supported)</small></strong><br>
         <input type="text" id="folderPath" placeholder="Path (e.g. Finance/2026)">
         <input type="text" id="fileTags" placeholder="Tags (e.g. tax, urgent)">
-        <input type="file" id="fileInput">
-        <button onclick="addFile()">Encrypt & Store</button>
+        <input type="file" id="fileInput" multiple>
+        <button onclick="addFile()">Encrypt & Store Files</button>
     </div>
 
     <div class="section">
@@ -70,12 +94,12 @@
 </div>
 
 <footer>
-    Static Crypto Vault System | <span id="appVersion">v1.3.0</span> | Secure Client-Side AES-256-GCM
+    Static Crypto Vault System | <span id="appVersion">v1.3.3</span> | Secure Client-Side AES-256-GCM
 </footer>
 
 <script>
-    const APP_VERSION = "1.3.0";
-    document.getElementById('appVersion').innerText = `v${APP_VERSION}`;
+    const APP_VERSION = "1.3.3";
+    document.getElementById('appVersion').innerText = `v${APP_VERSION} (Multi-Upload • Full UI Reset on Close)`;
     let vaultFiles = [];
 
     // --- Cryptography ---
@@ -83,18 +107,26 @@
         const encoder = new TextEncoder();
         const baseKey = await crypto.subtle.importKey("raw", encoder.encode(password), "PBKDF2", false, ["deriveKey"]);
         return crypto.subtle.deriveKey(
-            { name: "PBKDF2", salt, iterations: 100000, hash: "SHA-256" },
+            { name: "PBKDF2", salt, iterations: 600000, hash: "SHA-256" },
             baseKey, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]
         );
     }
 
-    // --- Password Strength ---
+    // --- Password Strength (improved empty state) ---
     function updateStrength() {
         const pwd = document.getElementById('password').value;
         const bar = document.getElementById('strengthBar');
         const label = document.getElementById('strengthLabel');
-        let score = 0;
 
+        if (!pwd) {
+            bar.style.width = "0%";
+            bar.style.background = "#e2e8f0";
+            label.innerText = "Strength: N/A";
+            label.style.color = "#94a3b8";
+            return;
+        }
+
+        let score = 0;
         if (pwd.length > 8) score++;
         if (/[A-Z]/.test(pwd)) score++;
         if (/[0-9]/.test(pwd)) score++;
@@ -109,40 +141,155 @@
         label.style.color = colors[score];
     }
 
-    // --- Core Logic ---
-    function addFile() {
-        const fileInput = document.getElementById('fileInput');
-        const path = document.getElementById('folderPath').value.trim() || "Root";
-        const tags = document.getElementById('fileTags').value.split(',').map(t => t.trim()).filter(t => t);
-        
-        if (!fileInput.files[0]) return alert("Select file");
-
-        const file = fileInput.files[0];
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            vaultFiles.push({
-                id: btoa(Math.random().toString()).slice(0, 8),
-                name: file.name,
-                path: path,
-                tags: tags,
-                content: e.target.result,
-                modified: new Date().toLocaleString()
-            });
-            renderTree();
-        };
-        reader.readAsDataURL(file);
+    function resetStrength() {
+        const bar = document.getElementById('strengthBar');
+        const label = document.getElementById('strengthLabel');
+        bar.style.width = "0%";
+        bar.style.background = "#e2e8f0";
+        label.innerText = "Strength: N/A";
+        label.style.color = "#94a3b8";
     }
 
+    // --- File Operations ---
+    function addFile() {
+        const fileInput = document.getElementById('fileInput');
+        if (!fileInput.files.length) return alert("Select one or more files");
+
+        let path = document.getElementById('folderPath').value.trim() || "Root";
+        const tags = document.getElementById('fileTags').value.split(',').map(t => t.trim()).filter(t => t);
+
+        const files = Array.from(fileInput.files);
+        let processed = 0;
+
+        files.forEach(file => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                vaultFiles.push({
+                    id: btoa(Math.random().toString(36)).slice(0, 12),
+                    name: file.name,
+                    path: path,
+                    tags: tags.slice(),           // copy tags for each file
+                    content: e.target.result,
+                    modified: new Date().toLocaleString()
+                });
+
+                processed++;
+                if (processed === files.length) {
+                    renderTree();
+                    fileInput.value = '';         // reset file input
+                    alert(`✅ ${files.length} file(s) added to folder "${path}"`);
+                }
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+
+    function renameFile(id) {
+        const file = vaultFiles.find(f => f.id === id);
+        if (!file) return;
+        const newName = prompt("New filename (keep extension):", file.name);
+        if (newName && newName !== file.name) {
+            file.name = newName;
+            file.modified = new Date().toLocaleString();
+            renderTree();
+        }
+    }
+
+    function editTags(id) {
+        const file = vaultFiles.find(f => f.id === id);
+        if (!file) return;
+        const current = file.tags.join(", ");
+        const newTagsStr = prompt("Update tags (comma-separated):", current);
+        if (newTagsStr !== null) {
+            file.tags = newTagsStr.split(',').map(t => t.trim()).filter(t => t);
+            file.modified = new Date().toLocaleString();
+            renderTree();
+        }
+    }
+
+    function moveFile(id) {
+        const file = vaultFiles.find(f => f.id === id);
+        if (!file) return;
+        const newPath = prompt("Move to new path (e.g. Finance/2026 or Root):", file.path);
+        if (newPath !== null && newPath.trim() !== file.path) {
+            file.path = newPath.trim() || "Root";
+            file.modified = new Date().toLocaleString();
+            renderTree();
+        }
+    }
+
+    function deleteFile(id) {
+        if (confirm("Permanently delete this file from session?")) {
+            vaultFiles = vaultFiles.filter(f => f.id !== id);
+            renderTree();
+        }
+    }
+
+    // --- Folder Rename ---
+    function renameFolderPrompt(fullPath) {
+        if (!fullPath) return;
+        const oldName = fullPath.split('/').pop();
+        const newName = prompt(`Rename folder "${oldName}" to:`, oldName);
+        if (!newName || newName === oldName) return;
+
+        const parts = fullPath.split('/');
+        const newFullPath = [...parts.slice(0, -1), newName].join('/');
+
+        vaultFiles.forEach(file => {
+            if (file.path === fullPath || file.path.startsWith(fullPath + '/')) {
+                file.path = file.path.replace(fullPath, newFullPath);
+                file.modified = new Date().toLocaleString();
+            }
+        });
+        renderTree();
+    }
+
+    // --- Close Vault + FULL UI RESET ---
+    function closeVault() {
+        if (!confirm("Close vault and reset all UI data?\n\n• All files cleared from memory\n• Vault title, search, path, tags and password reset\n• Last export remains safe on your computer")) {
+            return;
+        }
+
+        vaultFiles = [];
+        
+        // Full UI reset
+        document.getElementById('vaultTitle').value = "Personal Secure Vault";
+        document.getElementById('searchInput').value = "";
+        document.getElementById('folderPath').value = "";
+        document.getElementById('fileTags').value = "";
+        document.getElementById('password').value = "";
+        document.getElementById('vaultUpload').value = "";
+        
+        resetStrength();
+        renderTree();
+        
+        alert("✅ Vault closed and UI fully reset.\nAll data cleared from browser memory.");
+    }
+
+    // --- Tree Rendering ---
     function renderTree() {
         const container = document.getElementById('treeContainer');
-        const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+        const searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
         container.innerHTML = "";
+
+        if (vaultFiles.length === 0) {
+            container.innerHTML = `<div style="text-align:center; padding:80px 20px; color:#64748b;">
+                <strong>Vault is empty</strong><br><br>
+                Add files above or Import a .vault backup
+            </div>`;
+            return;
+        }
 
         const filteredFiles = vaultFiles.filter(f => 
             f.name.toLowerCase().includes(searchTerm) || 
             f.path.toLowerCase().includes(searchTerm) ||
             f.tags.some(t => t.toLowerCase().includes(searchTerm))
         );
+
+        if (filteredFiles.length === 0) {
+            container.innerHTML = `<p style="color:#94a3b8; text-align:center; padding:60px;">No files match your search.</p>`;
+            return;
+        }
 
         const tree = {};
         filteredFiles.forEach(file => {
@@ -155,13 +302,18 @@
             });
         });
 
-        const buildHTML = (obj) => {
+        const buildHTML = (obj, pathPrefix = "", isRoot = true) => {
             const div = document.createElement('div');
-            div.className = "tree-node";
+            if (!isRoot) div.className = "tree-node";
+
             for (const key in obj) {
+                const fullFolderPath = pathPrefix ? `${pathPrefix}/${key}` : key;
                 const node = document.createElement('div');
-                node.innerHTML = `<span class="folder-name">📁 ${key}</span>`;
-                if (Object.keys(obj[key]._folders).length > 0) node.appendChild(buildHTML(obj[key]._folders));
+                node.innerHTML = `<span class="folder-name" onclick="renameFolderPrompt('${fullFolderPath}')" title="Click to rename folder">📁 ${key}</span>`;
+                
+                if (Object.keys(obj[key]._folders).length > 0) {
+                    node.appendChild(buildHTML(obj[key]._folders, fullFolderPath, false));
+                }
                 
                 obj[key]._files.forEach(file => {
                     const fDiv = document.createElement('div');
@@ -173,6 +325,8 @@
                             <span class="timestamp">${file.modified}</span>
                         </div>
                         <div>
+                            <button class="btn-sm btn-move" onclick="moveFile('${file.id}')">Move</button>
+                            <button class="btn-sm btn-tags" onclick="editTags('${file.id}')">Tags</button>
                             <button class="btn-sm btn-rename" onclick="renameFile('${file.id}')">Rename</button>
                             <button class="btn-sm btn-delete" onclick="deleteFile('${file.id}')">Delete</button>
                         </div>
@@ -183,27 +337,15 @@
             }
             return div;
         };
-        container.appendChild(buildHTML(tree));
+
+        container.appendChild(buildHTML(tree, "", true));
     }
 
-    function renameFile(id) {
-        const file = vaultFiles.find(f => f.id === id);
-        const newName = prompt("New filename:", file.name);
-        if (newName) { 
-            file.name = newName; 
-            file.modified = new Date().toLocaleString(); // Update timestamp on rename
-            renderTree(); 
-        }
-    }
-
-    function deleteFile(id) {
-        if(confirm("Permanently delete from session?")) { vaultFiles = vaultFiles.filter(f => f.id !== id); renderTree(); }
-    }
-
+    // --- Export / Import ---
     async function downloadVault() {
         const password = document.getElementById('password').value;
-        const title = document.getElementById('vaultTitle').value;
-        if (!password) return alert("Please enter a password to encrypt your data.");
+        const title = document.getElementById('vaultTitle').value.trim();
+        if (!password) return alert("Enter a password to encrypt the vault.");
 
         const fullData = {
             metadata: { title, version: APP_VERSION, timestamp: new Date().toISOString() },
@@ -217,7 +359,7 @@
         
         const blob = new Blob([salt, iv, encrypted], { type: "application/octet-stream" });
         const a = document.createElement('a');
-        const safeTitle = title.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+        const safeTitle = title.replace(/[^a-z0-9]/gi, '_').toLowerCase() || "vault";
         a.href = URL.createObjectURL(blob);
         a.download = `${safeTitle}_v${APP_VERSION}.vault`;
         a.click();
@@ -236,12 +378,18 @@
         try {
             const dec = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, buffer.slice(28));
             const imported = JSON.parse(new TextDecoder().decode(dec));
-            vaultFiles = imported.files;
-            if (imported.metadata) document.getElementById('vaultTitle').value = imported.metadata.title;
+            vaultFiles = imported.files || [];
+            if (imported.metadata?.title) document.getElementById('vaultTitle').value = imported.metadata.title;
             renderTree();
-            alert("Vault unlocked.");
-        } catch (e) { alert("Decryption failed. Incorrect password or corrupted file."); }
+            alert("Vault imported successfully!");
+        } catch (e) {
+            alert("Decryption failed. Wrong password or corrupted file.");
+        }
     }
+
+    // Initialize
+    resetStrength();
+    renderTree();
 </script>
 </body>
 </html>
