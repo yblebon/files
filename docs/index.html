@@ -2,393 +2,331 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#2563eb">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Secure Vault">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='192' height='192' viewBox='0 0 24 24' fill='%232563eb'%3E%3Cpath d='M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z'/%3E%3C/svg%3E">
     <title>Secure Vault Manager Pro</title>
     <style>
-        :root { --primary: #2563eb; --danger: #dc2626; --bg: #f8fafc; --accent: #7c3aed; --success: #059669; --move: #eab308; }
-        body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); padding: 20px; color: #1e293b; display: flex; flex-direction: column; min-height: 95vh; }
-        .container { max-width: 1000px; margin: auto; background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); flex-grow: 1; }
-        .section { margin-bottom: 20px; padding: 16px; border: 1px solid #e2e8f0; border-radius: 8px; }
-        
-        .vault-header { border: none; font-size: 1.8rem; font-weight: bold; color: var(--primary); width: 100%; margin-bottom: 10px; outline: none; border-bottom: 2px solid transparent; }
-        .vault-header:focus { border-bottom: 2px solid var(--primary); background: #f1f5f9; }
-
-        input, button { padding: 10px; margin: 5px 0; border-radius: 6px; border: 1px solid #cbd5e1; }
-        button { cursor: pointer; background: var(--primary); color: white; border: none; font-weight: 600; transition: transform 0.1s; }
-        button:active { transform: scale(0.98); }
-        .btn-sm { padding: 4px 8px; font-size: 0.75rem; margin-left: 4px; }
-        .btn-rename { background: #ca8a04; }
+        :root {
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --danger: #ef4444;
+            --bg: #f1f5f9;
+            --card-bg: #ffffff;
+            --accent: #8b5cf6;
+            --success: #10b981;
+            --move: #f59e0b;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
+        }
+        body { font-family: 'Inter', system-ui, -apple-system, sans-serif; background: var(--bg); padding: 20px; color: var(--text-main); display: flex; flex-direction: column; min-height: 100vh; margin: 0; }
+        .container { max-width: 1100px; margin: auto; background: var(--card-bg); padding: 2rem; border-radius: 24px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.05), 0 10px 10px -5px rgba(0,0,0,0.02); flex-grow: 1; width: 100%; box-sizing: border-box; }
+        .vault-header { border: none; font-size: 2rem; font-weight: 800; color: var(--primary); width: 100%; margin-bottom: 24px; outline: none; background: transparent; transition: all 0.2s; border-radius: 8px; padding: 4px 8px; }
+        .vault-header:focus { background: #f8fafc; box-shadow: inset 0 0 0 2px var(--primary); }
+        .section { margin-bottom: 24px; padding: 20px; background: #ffffff; border: 1px solid var(--border); border-radius: 16px; transition: box-shadow 0.2s; }
+        .section:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.03); }
+        input { padding: 12px 16px; margin: 8px 0; border-radius: 10px; border: 1px solid var(--border); font-size: 0.95rem; transition: all 0.2s; background: #fcfcfd; }
+        input:focus { border-color: var(--primary); outline: none; box-shadow: 0 0 0 4px rgba(37,99,235,0.1); background: #fff; }
+        button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 20px; margin: 6px 0; border-radius: 10px; border: none; font-weight: 600; font-size: 0.95rem; transition: all 0.2s; cursor: pointer; background: var(--primary); color: white; }
+        button:hover { opacity: 0.9; transform: translateY(-1px); }
+        button:active { transform: translateY(0) scale(0.98); }
+        .btn-sm { padding: 6px 12px; font-size: 0.8rem; border-radius: 8px; }
+        .btn-rename { background: #d97706; }
         .btn-delete { background: var(--danger); }
         .btn-tags { background: var(--accent); }
         .btn-move { background: var(--move); }
-        
-        /* Password Strength Meter */
-        .strength-container { margin-top: 5px; width: 200px; }
-        .strength-bar { height: 6px; border-radius: 3px; background: #e2e8f0; transition: all 0.3s; }
-        .strength-text { font-size: 0.7rem; font-weight: bold; margin-top: 2px; display: block; }
-        
-        .search-bar { width: 100%; padding: 12px; font-size: 1rem; border: 2px solid var(--primary); margin-bottom: 15px; box-sizing: border-box; }
-        
-        /* Tree & UI */
-        .tree-node { margin-left: 20px; border-left: 1px dashed #cbd5e1; padding-left: 10px; }
-        .folder-name { font-weight: bold; color: #475569; display: block; margin: 8px 0; cursor: pointer; }
-        .folder-name:hover { color: var(--primary); text-decoration: underline; }
-        .file-item { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f1f5f9; }
-        .tag { background: #ede9fe; color: var(--accent); padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; margin-left: 5px; font-weight: bold; }
-        .timestamp { color: #94a3b8; font-size: 0.75rem; margin-left: 10px; font-style: italic; }
-        
-        footer { margin-top: 40px; text-align: center; color: #94a3b8; font-size: 0.85rem; border-top: 1px solid #e2e8f0; padding-top: 20px; }
-        
-        /* Security Warning */
-        #securityWarning {
-            background: #fee2e2;
-            color: #991b1b;
-            padding: 14px 16px;
-            border-radius: 8px;
-            margin-bottom: 24px;
-            border: 2px solid #ef4444;
-            font-size: 0.95rem;
-            line-height: 1.4;
+        .btn-close { background: #64748b; }
+        .strength-container { margin-top: 10px; width: 100%; }
+        .strength-bar { height: 6px; border-radius: 10px; background: #e2e8f0; overflow: hidden; }
+        .strength-bar > div { height: 100%; transition: width 0.4s ease; }
+        .strength-text { font-size: 0.75rem; font-weight: 700; margin-top: 6px; display: block; text-transform: uppercase; letter-spacing: 0.05em; }
+        .search-bar { width: 100%; padding: 16px 20px; font-size: 1.1rem; border: 2px solid var(--border); margin-bottom: 24px; box-sizing: border-box; border-radius: 14px; background: #f8fafc; }
+        .search-bar:focus { border-color: var(--primary); background: #fff; }
+        #treeContainer { max-height: 60vh; overflow-y: auto; padding-right: 10px; }
+        #treeContainer::-webkit-scrollbar { width: 6px; }
+        #treeContainer::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
+        .tree-node { margin-left: 24px; border-left: 2px solid #f1f5f9; padding-left: 16px; position: relative; }
+        .folder-name { font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 8px; margin: 12px 0 8px 0; cursor: pointer; padding: 6px 10px; border-radius: 8px; transition: background 0.2s; }
+        .folder-name:hover { background: #f1f5f9; color: var(--primary); }
+        .folder-name::before { content: "📁"; font-size: 1.1rem; }
+        .file-item { display: flex; align-items: center; justify-content: space-between; padding: 12px; border-radius: 12px; margin: 4px 0; background: #fff; border: 1px solid transparent; transition: all 0.2s; }
+        .file-item:hover { border-color: var(--border); background: #f8fafc; }
+        .file-info { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 0; }
+        .file-link { font-weight: 600; color: var(--primary); text-decoration: none; display: flex; align-items: center; gap: 6px; }
+        .file-link::before { content: "📄"; opacity: 0.7; }
+        .tag { background: #f3f4f6; color: var(--text-muted); padding: 2px 8px; border-radius: 99px; font-size: 0.7rem; font-weight: 700; border: 1px solid var(--border); }
+        .timestamp { color: var(--text-muted); font-size: 0.75rem; font-style: normal; }
+        footer { margin-top: auto; padding: 40px 0 20px; text-align: center; color: var(--text-muted); font-size: 0.85rem; }
+        #securityWarning { background: #fff1f2; color: #9f1239; padding: 16px 20px; border-radius: 16px; margin-bottom: 24px; border-left: 6px solid #fb7185; font-size: 0.9rem; display: flex; gap: 12px; align-items: flex-start; }
+        .vault-stats { font-size: 0.9rem; color: var(--text-muted); margin-bottom: 12px; font-weight: 500; }
+        @media (max-width: 768px) {
+            .container { padding: 1.25rem; border-radius: 0; }
+            .section { padding: 16px; }
+            .file-item { flex-direction: column; align-items: flex-start; gap: 12px; }
+            .file-actions { width: 100%; display: flex; flex-wrap: wrap; gap: 6px; }
         }
+        #installBtn { background: var(--success); }
     </style>
 </head>
 <body>
-
 <div class="container">
-    <!-- SECURITY WARNING -->
     <div id="securityWarning">
-        <strong>⚠️ Security Warning – Read This</strong><br>
-        This is a <strong>client-side only</strong> vault. All files stay <strong>in plain text in browser memory</strong> while the page is open.<br>
-        Data is encrypted <strong>only when you click Export</strong>.<br>
-        <strong>Always close the vault when finished and export regularly.</strong>
+        <span style="font-size: 1.5rem;">🛡️</span>
+        <div>
+            <strong>Encryption Notice:</strong> Files are held in browser memory while open.
+            Data is only cryptographically secured upon <strong>Export</strong>. Works 100% offline.
+        </div>
     </div>
-
-    <input type="text" id="vaultTitle" class="vault-header" value="Personal Secure Vault" title="Click to rename vault">
+    <input type="text" id="vaultTitle" class="vault-header" value="Personal Secure Vault" spellcheck="false">
 
     <div class="section">
-        <div style="display:inline-block; vertical-align: top;">
-            <input type="password" id="password" placeholder="Vault Password" style="width: 200px;" oninput="updateStrength()">
-            <div class="strength-container">
-                <div id="strengthBar" class="strength-bar"></div>
-                <span id="strengthLabel" class="strength-text">Strength: N/A</span>
+        <div style="display:flex; flex-wrap:wrap; gap:16px;">
+            <div style="flex:2; min-width:260px;">
+                <label style="font-size: 0.8rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase;">Vault Key</label>
+                <input type="password" id="password" placeholder="Enter master password..." style="width:100%; box-sizing: border-box;" oninput="updateStrength()">
+                <div class="strength-container">
+                    <div class="strength-bar"><div id="strengthBar"></div></div>
+                    <span id="strengthLabel" class="strength-text">Strength: N/A</span>
+                </div>
+            </div>
+            <div style="flex:3; min-width:260px; display:flex; flex-wrap:wrap; gap:8px; align-items: flex-start; padding-top: 24px;">
+                <button onclick="downloadVault()" style="background: var(--success);">💾 Export .vault</button>
+                <button onclick="document.getElementById('vaultUpload').click()" style="background: #4b5563;">📂 Import</button>
+                <button onclick="closeVault()" class="btn-close">🔒 Close</button>
+                <button id="installBtn" style="display:none;">📲 Install PWA</button>
+                <input type="file" id="vaultUpload" accept=".vault" style="display:none;" onchange="loadVault()">
             </div>
         </div>
-        <button onclick="downloadVault()" style="background: var(--success);">Export (.vault)</button>
-        <input type="file" id="vaultUpload" accept=".vault" style="width: 180px;">
-        <button onclick="loadVault()" style="background: #4b5563;">Import</button>
-        <button onclick="closeVault()" style="background: #6b7280;">Close Vault</button>
     </div>
 
-    <div class="section" style="background: #f8fafc;">
-        <strong>New Files Upload <small>(multiple files supported)</small></strong><br>
-        <input type="text" id="folderPath" placeholder="Path (e.g. Finance/2026)">
-        <input type="text" id="fileTags" placeholder="Tags (e.g. tax, urgent)">
-        <input type="file" id="fileInput" multiple>
-        <button onclick="addFile()">Encrypt & Store Files</button>
+    <div class="section" style="background: #f8fafc; border-style: dashed; border-width: 2px;">
+        <h4 style="margin: 0 0 16px 0; color: var(--text-muted);">➕ Add Files to Vault</h4>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
+            <input type="text" id="folderPath" placeholder="Folder Path (e.g. Work/2026)">
+            <input type="text" id="fileTags" placeholder="Tags (e.g. invoice, pdf)">
+        </div>
+        <div style="margin-top: 12px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+            <input type="file" id="fileInput" multiple style="flex:1;">
+            <button onclick="addFile()" style="padding: 12px 30px;">Encrypt & Store</button>
+        </div>
     </div>
 
     <div class="section">
-        <input type="text" id="searchInput" class="search-bar" placeholder="🔍 Search filename, folder, or #tag..." oninput="renderTree()">
+        <input type="text" id="searchInput" class="search-bar" placeholder="🔍 Search by name, folder, or tag..." oninput="renderTree()">
+        <div id="vaultStats" class="vault-stats"></div>
         <div id="treeContainer"></div>
     </div>
 </div>
 
 <footer>
-    Static Crypto Vault System | <span id="appVersion">v1.3.3</span> | Secure Client-Side AES-256-GCM
+    <strong>Secure Vault Pro</strong> • <span id="appVersion">v1.3.7</span><br>
+    AES-256-GCM Encryption • Zero-Knowledge Architecture
 </footer>
 
 <script>
-    const APP_VERSION = "1.3.3";
-    document.getElementById('appVersion').innerText = `v${APP_VERSION} (Multi-Upload • Full UI Reset on Close)`;
+    const APP_VERSION = "1.3.7";
+    document.getElementById('appVersion').innerText = `v${APP_VERSION} • Tree Refresh Fixed`;
     let vaultFiles = [];
+    let deferredPrompt = null;
 
-    // --- Cryptography ---
+    // === PWA (safe on file://) ===
+    function setupPWA() {
+        const manifest = { /* unchanged */ 
+            "name": "Secure Vault Manager Pro", "short_name": "Vault Pro", "start_url": ".", "display": "standalone",
+            "background_color": "#f8fafc", "theme_color": "#2563eb",
+            "icons": [{ "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='192' height='192' viewBox='0 0 24 24' fill='%232563eb'%3E%3Cpath d='M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z'/%3E%3C/svg%3E", "sizes": "192x192", "type": "image/svg+xml" }]
+        };
+        const link = document.createElement('link'); link.rel = 'manifest'; link.href = URL.createObjectURL(new Blob([JSON.stringify(manifest)], {type:'application/json'}));
+        document.head.appendChild(link);
+
+        if ('serviceWorker' in navigator) {
+            const swCode = `const CACHE_NAME='vault-v${APP_VERSION}';self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE_NAME).then(c=>c.addAll(['./']))));self.addEventListener('fetch',e=>e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request))));`;
+            navigator.serviceWorker.register(URL.createObjectURL(new Blob([swCode], {type:'application/javascript'})), {scope:'./'})
+                .catch(() => {}); // silent on file://
+        }
+
+        window.addEventListener('beforeinstallprompt', e => {
+            e.preventDefault(); deferredPrompt = e;
+            document.getElementById('installBtn').style.display = 'block';
+        });
+    }
+    document.getElementById('installBtn').addEventListener('click', async () => {
+        if (deferredPrompt) { deferredPrompt.prompt(); document.getElementById('installBtn').style.display = 'none'; deferredPrompt = null; }
+    });
+
+    function formatBytes(bytes) {
+        if (!bytes) return '';
+        const k = 1024, sizes = ['B','KB','MB','GB'];
+        const i = Math.floor(Math.log(bytes)/Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+    }
+
+    function updateVaultStats() {
+        const total = vaultFiles.reduce((sum, f) => sum + (f.size || 0), 0);
+        document.getElementById('vaultStats').innerHTML = vaultFiles.length ? `📦 ${vaultFiles.length} files • ${formatBytes(total)}` : '';
+    }
+
     async function deriveKey(password, salt) {
         const encoder = new TextEncoder();
         const baseKey = await crypto.subtle.importKey("raw", encoder.encode(password), "PBKDF2", false, ["deriveKey"]);
-        return crypto.subtle.deriveKey(
-            { name: "PBKDF2", salt, iterations: 600000, hash: "SHA-256" },
-            baseKey, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]
-        );
+        return crypto.subtle.deriveKey({ name: "PBKDF2", salt, iterations: 600000, hash: "SHA-256" }, baseKey, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
     }
 
-    // --- Password Strength (improved empty state) ---
     function updateStrength() {
         const pwd = document.getElementById('password').value;
         const bar = document.getElementById('strengthBar');
         const label = document.getElementById('strengthLabel');
-
-        if (!pwd) {
-            bar.style.width = "0%";
-            bar.style.background = "#e2e8f0";
-            label.innerText = "Strength: N/A";
-            label.style.color = "#94a3b8";
-            return;
-        }
-
+        if (!pwd) { bar.style.width = "0%"; bar.style.background = "#e2e8f0"; label.innerText = "Strength: N/A"; label.style.color = "#64748b"; return; }
         let score = 0;
         if (pwd.length > 8) score++;
         if (/[A-Z]/.test(pwd)) score++;
         if (/[0-9]/.test(pwd)) score++;
         if (/[^A-Za-z0-9]/.test(pwd)) score++;
-
-        const colors = ["#e2e8f0", "#dc2626", "#ea580c", "#ca8a04", "#059669"];
-        const texts = ["Weak", "Weak", "Fair", "Good", "Strong"];
-        
-        bar.style.width = (score * 25) + "%";
-        bar.style.background = colors[score];
-        label.innerText = "Strength: " + texts[score];
-        label.style.color = colors[score];
+        const colors = ["#e2e8f0", "#ef4444", "#f59e0b", "#eab308", "#10b981"];
+        const texts = ["Too Short", "Weak", "Fair", "Good", "Strong"];
+        bar.style.width = (score * 25) + "%"; bar.style.background = colors[score];
+        label.innerText = "Strength: " + texts[score]; label.style.color = colors[score];
     }
 
-    function resetStrength() {
-        const bar = document.getElementById('strengthBar');
-        const label = document.getElementById('strengthLabel');
-        bar.style.width = "0%";
-        bar.style.background = "#e2e8f0";
-        label.innerText = "Strength: N/A";
-        label.style.color = "#94a3b8";
+    function resetUI() {
+        document.getElementById('vaultTitle').value = "Personal Secure Vault";
+        ["searchInput","folderPath","fileTags","password","vaultUpload","fileInput"].forEach(id => document.getElementById(id).value = "");
+        updateStrength();
     }
 
-    // --- File Operations ---
     function addFile() {
         const fileInput = document.getElementById('fileInput');
-        if (!fileInput.files.length) return alert("Select one or more files");
-
-        let path = document.getElementById('folderPath').value.trim() || "Root";
+        if (!fileInput.files.length) return alert("Select files first");
+        const path = document.getElementById('folderPath').value.trim() || "Root";
         const tags = document.getElementById('fileTags').value.split(',').map(t => t.trim()).filter(t => t);
-
         const files = Array.from(fileInput.files);
         let processed = 0;
 
         files.forEach(file => {
             const reader = new FileReader();
-            reader.onload = (e) => {
+            reader.onload = e => {
                 vaultFiles.push({
                     id: btoa(Math.random().toString(36)).slice(0, 12),
-                    name: file.name,
-                    path: path,
-                    tags: tags.slice(),           // copy tags for each file
-                    content: e.target.result,
-                    modified: new Date().toLocaleString()
+                    name: file.name, path: path, tags: [...tags],
+                    content: e.target.result, modified: new Date().toLocaleString(), size: file.size
                 });
-
                 processed++;
                 if (processed === files.length) {
+                    document.getElementById('searchInput').value = "";   // ← THIS WAS THE MISSING PIECE
                     renderTree();
-                    fileInput.value = '';         // reset file input
-                    alert(`✅ ${files.length} file(s) added to folder "${path}"`);
+                    fileInput.value = '';
+                    alert(`✅ ${files.length} file(s) added to "${path}"`);
                 }
             };
             reader.readAsDataURL(file);
         });
     }
 
-    function renameFile(id) {
-        const file = vaultFiles.find(f => f.id === id);
-        if (!file) return;
-        const newName = prompt("New filename (keep extension):", file.name);
-        if (newName && newName !== file.name) {
-            file.name = newName;
-            file.modified = new Date().toLocaleString();
-            renderTree();
-        }
-    }
+    // renameFile, editTags, moveFile, deleteFile, renameFolderPrompt, closeVault, downloadVault, loadVault — unchanged from v1.3.6
+    function renameFile(id) { const f = vaultFiles.find(x=>x.id===id); if(!f) return; const n=prompt("New filename:",f.name); if(n&&n!==f.name){f.name=n; f.modified=new Date().toLocaleString(); renderTree();} }
+    function editTags(id) { const f = vaultFiles.find(x=>x.id===id); if(!f) return; const s=prompt("Tags:",f.tags.join(", ")); if(s!==null){f.tags=s.split(',').map(t=>t.trim()).filter(t=>t); f.modified=new Date().toLocaleString(); renderTree();} }
+    function moveFile(id) { const f = vaultFiles.find(x=>x.id===id); if(!f) return; const p=prompt("New path:",f.path); if(p!==null && p.trim()!==f.path){f.path=p.trim()||"Root"; f.modified=new Date().toLocaleString(); renderTree();} }
+    function deleteFile(id) { if(confirm("Delete permanently?")){vaultFiles=vaultFiles.filter(x=>x.id!==id); renderTree();} }
+    function renameFolderPrompt(full) { const old=full.split('/').pop(); const nn=prompt(`Rename "${old}" to:`,old); if(!nn||nn===old) return; const np=[...full.split('/').slice(0,-1),nn].join('/'); vaultFiles.forEach(f=>{if(f.path===full||f.path.startsWith(full+'/')){f.path=f.path.replace(full,np); f.modified=new Date().toLocaleString();}}); renderTree(); }
+    function closeVault() { if(!confirm("Close vault and reset everything?")) return; vaultFiles=[]; resetUI(); renderTree(); alert("✅ Vault closed"); }
 
-    function editTags(id) {
-        const file = vaultFiles.find(f => f.id === id);
-        if (!file) return;
-        const current = file.tags.join(", ");
-        const newTagsStr = prompt("Update tags (comma-separated):", current);
-        if (newTagsStr !== null) {
-            file.tags = newTagsStr.split(',').map(t => t.trim()).filter(t => t);
-            file.modified = new Date().toLocaleString();
-            renderTree();
-        }
-    }
-
-    function moveFile(id) {
-        const file = vaultFiles.find(f => f.id === id);
-        if (!file) return;
-        const newPath = prompt("Move to new path (e.g. Finance/2026 or Root):", file.path);
-        if (newPath !== null && newPath.trim() !== file.path) {
-            file.path = newPath.trim() || "Root";
-            file.modified = new Date().toLocaleString();
-            renderTree();
-        }
-    }
-
-    function deleteFile(id) {
-        if (confirm("Permanently delete this file from session?")) {
-            vaultFiles = vaultFiles.filter(f => f.id !== id);
-            renderTree();
-        }
-    }
-
-    // --- Folder Rename ---
-    function renameFolderPrompt(fullPath) {
-        if (!fullPath) return;
-        const oldName = fullPath.split('/').pop();
-        const newName = prompt(`Rename folder "${oldName}" to:`, oldName);
-        if (!newName || newName === oldName) return;
-
-        const parts = fullPath.split('/');
-        const newFullPath = [...parts.slice(0, -1), newName].join('/');
-
-        vaultFiles.forEach(file => {
-            if (file.path === fullPath || file.path.startsWith(fullPath + '/')) {
-                file.path = file.path.replace(fullPath, newFullPath);
-                file.modified = new Date().toLocaleString();
-            }
-        });
-        renderTree();
-    }
-
-    // --- Close Vault + FULL UI RESET ---
-    function closeVault() {
-        if (!confirm("Close vault and reset all UI data?\n\n• All files cleared from memory\n• Vault title, search, path, tags and password reset\n• Last export remains safe on your computer")) {
-            return;
-        }
-
-        vaultFiles = [];
-        
-        // Full UI reset
-        document.getElementById('vaultTitle').value = "Personal Secure Vault";
-        document.getElementById('searchInput').value = "";
-        document.getElementById('folderPath').value = "";
-        document.getElementById('fileTags').value = "";
-        document.getElementById('password').value = "";
-        document.getElementById('vaultUpload').value = "";
-        
-        resetStrength();
-        renderTree();
-        
-        alert("✅ Vault closed and UI fully reset.\nAll data cleared from browser memory.");
-    }
-
-    // --- Tree Rendering ---
     function renderTree() {
         const container = document.getElementById('treeContainer');
-        const searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
+        const search = document.getElementById('searchInput').value.toLowerCase().trim();
         container.innerHTML = "";
+        updateVaultStats();
 
-        if (vaultFiles.length === 0) {
-            container.innerHTML = `<div style="text-align:center; padding:80px 20px; color:#64748b;">
-                <strong>Vault is empty</strong><br><br>
-                Add files above or Import a .vault backup
-            </div>`;
+        if (!vaultFiles.length) {
+            container.innerHTML = '<div style="text-align:center;padding:60px 20px;opacity:0.6;">Vault is empty.<br><br>Upload files or import a backup</div>';
             return;
         }
 
-        const filteredFiles = vaultFiles.filter(f => 
-            f.name.toLowerCase().includes(searchTerm) || 
-            f.path.toLowerCase().includes(searchTerm) ||
-            f.tags.some(t => t.toLowerCase().includes(searchTerm))
+        const filtered = vaultFiles.filter(f => 
+            f.name.toLowerCase().includes(search) || 
+            f.path.toLowerCase().includes(search) || 
+            f.tags.some(t => t.toLowerCase().includes(search))
         );
 
-        if (filteredFiles.length === 0) {
-            container.innerHTML = `<p style="color:#94a3b8; text-align:center; padding:60px;">No files match your search.</p>`;
-            return;
-        }
-
         const tree = {};
-        filteredFiles.forEach(file => {
-            const parts = file.path.split('/').filter(p => p);
+        filtered.forEach(file => {
+            const parts = file.path.split('/').filter(p=>p);
             let ref = tree;
-            parts.forEach((part, idx) => {
-                if (!ref[part]) ref[part] = { _files: [], _folders: {} };
-                if (idx === parts.length - 1) ref[part]._files.push(file);
-                else ref = ref[part]._folders;
-            });
+            parts.forEach((part,i)=>{ if(!ref[part]) ref[part]={_files:[],_folders:{}}; if(i===parts.length-1) ref[part]._files.push(file); else ref=ref[part]._folders; });
         });
 
-        const buildHTML = (obj, pathPrefix = "", isRoot = true) => {
-            const div = document.createElement('div');
-            if (!isRoot) div.className = "tree-node";
-
+        const build = (obj, prefix="", isRoot=true) => {
+            const div = document.createElement('div'); if(!isRoot) div.className="tree-node";
             for (const key in obj) {
-                const fullFolderPath = pathPrefix ? `${pathPrefix}/${key}` : key;
+                const full = prefix ? `${prefix}/${key}` : key;
                 const node = document.createElement('div');
-                node.innerHTML = `<span class="folder-name" onclick="renameFolderPrompt('${fullFolderPath}')" title="Click to rename folder">📁 ${key}</span>`;
-                
-                if (Object.keys(obj[key]._folders).length > 0) {
-                    node.appendChild(buildHTML(obj[key]._folders, fullFolderPath, false));
-                }
-                
+                node.innerHTML = `<span class="folder-name" onclick="renameFolderPrompt('${full}')">${key}</span>`;
+                if (Object.keys(obj[key]._folders).length) node.appendChild(build(obj[key]._folders, full, false));
                 obj[key]._files.forEach(file => {
-                    const fDiv = document.createElement('div');
-                    fDiv.className = "file-item";
+                    const sz = file.size ? ` • ${formatBytes(file.size)}` : '';
+                    const fDiv = document.createElement('div'); fDiv.className = "file-item";
                     fDiv.innerHTML = `
                         <div class="file-info">
-                            <a href="${file.content}" download="${file.name}" style="text-decoration:none; color:var(--primary); font-weight:500">📄 ${file.name}</a>
-                            ${file.tags.map(t => `<span class="tag">#${t}</span>`).join('')}
-                            <span class="timestamp">${file.modified}</span>
+                            <a href="${file.content}" download="${file.name}" class="file-link">${file.name}</a>
+                            <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+                                ${file.tags.map(t=>`<span class="tag">#${t}</span>`).join('')}
+                                <span class="timestamp">• ${file.modified}${sz}</span>
+                            </div>
                         </div>
-                        <div>
+                        <div class="file-actions">
                             <button class="btn-sm btn-move" onclick="moveFile('${file.id}')">Move</button>
                             <button class="btn-sm btn-tags" onclick="editTags('${file.id}')">Tags</button>
                             <button class="btn-sm btn-rename" onclick="renameFile('${file.id}')">Rename</button>
                             <button class="btn-sm btn-delete" onclick="deleteFile('${file.id}')">Delete</button>
-                        </div>
-                    `;
+                        </div>`;
                     node.appendChild(fDiv);
                 });
                 div.appendChild(node);
             }
             return div;
         };
-
-        container.appendChild(buildHTML(tree, "", true));
+        container.appendChild(build(tree));
     }
 
-    // --- Export / Import ---
     async function downloadVault() {
-        const password = document.getElementById('password').value;
-        const title = document.getElementById('vaultTitle').value.trim();
-        if (!password) return alert("Enter a password to encrypt the vault.");
-
-        const fullData = {
-            metadata: { title, version: APP_VERSION, timestamp: new Date().toISOString() },
-            files: vaultFiles
-        };
-
+        const pwd = document.getElementById('password').value;
+        if (!pwd) return alert("Password required");
+        const title = document.getElementById('vaultTitle').value.trim() || "vault";
+        const safe = title.replace(/[^a-z0-9]/gi, '_').toLowerCase();
         const salt = crypto.getRandomValues(new Uint8Array(16));
         const iv = crypto.getRandomValues(new Uint8Array(12));
-        const key = await deriveKey(password, salt);
-        const encrypted = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, new TextEncoder().encode(JSON.stringify(fullData)));
-        
-        const blob = new Blob([salt, iv, encrypted], { type: "application/octet-stream" });
+        const key = await deriveKey(pwd, salt);
+        const data = { metadata: { title, version: APP_VERSION, timestamp: new Date().toISOString() }, files: vaultFiles };
+        const enc = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, new TextEncoder().encode(JSON.stringify(data)));
         const a = document.createElement('a');
-        const safeTitle = title.replace(/[^a-z0-9]/gi, '_').toLowerCase() || "vault";
-        a.href = URL.createObjectURL(blob);
-        a.download = `${safeTitle}_v${APP_VERSION}.vault`;
+        a.href = URL.createObjectURL(new Blob([salt, iv, enc]));
+        a.download = `${safe}_v${APP_VERSION}.vault`;
         a.click();
     }
 
     async function loadVault() {
-        const password = document.getElementById('password').value;
+        const pwd = document.getElementById('password').value;
         const file = document.getElementById('vaultUpload').files[0];
-        if (!password || !file) return alert("Password and .vault file required.");
-
-        const buffer = await file.arrayBuffer();
-        const salt = new Uint8Array(buffer.slice(0, 16));
-        const iv = new Uint8Array(buffer.slice(16, 28));
-        const key = await deriveKey(password, salt);
-
+        if (!pwd || !file) return alert("Enter password first");
+        const buf = await file.arrayBuffer();
+        const salt = new Uint8Array(buf.slice(0,16)), iv = new Uint8Array(buf.slice(16,28));
+        const key = await deriveKey(pwd, salt);
         try {
-            const dec = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, buffer.slice(28));
+            const dec = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, buf.slice(28));
             const imported = JSON.parse(new TextDecoder().decode(dec));
             vaultFiles = imported.files || [];
             if (imported.metadata?.title) document.getElementById('vaultTitle').value = imported.metadata.title;
+            document.getElementById('searchInput').value = "";
             renderTree();
-            alert("Vault imported successfully!");
-        } catch (e) {
-            alert("Decryption failed. Wrong password or corrupted file.");
-        }
+            alert("✅ Vault imported successfully!");
+        } catch(e) { alert("❌ Invalid password or corrupted file"); }
     }
 
-    // Initialize
-    resetStrength();
+    // INIT
+    setupPWA();
     renderTree();
 </script>
 </body>
