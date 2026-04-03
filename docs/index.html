@@ -169,14 +169,34 @@
         #treeContainer::-webkit-scrollbar { width: 4px; }
         #treeContainer::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 99px; }
         .tree-node { margin-left: 18px; border-left: 1px solid rgba(255,255,255,0.05); padding-left: 14px; }
-        .folder-name {
+
+        /* ── Folder row: toggle + rename ── */
+        .folder-row {
+            display: flex; align-items: center; margin: 8px 0 4px -4px;
+        }
+        .folder-toggle {
             display: flex; align-items: center; gap: 8px;
-            padding: 6px 10px; margin: 8px 0 4px -4px; border-radius: 8px;
+            padding: 6px 10px; border-radius: 8px;
             cursor: pointer; font-size: 0.83rem; font-weight: 700;
             color: var(--muted2); transition: all 0.18s; user-select: none;
+            flex: 1;
+            background: none; border: none; font-family: var(--font-body); text-align: left;
         }
-        .folder-name:hover { background: rgba(255,255,255,0.04); color: var(--cyan); }
+        .folder-toggle:hover { background: rgba(255,255,255,0.04); color: var(--cyan); }
         .folder-icon { width: 15px; height: 15px; fill: var(--amber); flex-shrink: 0; }
+        .chevron-icon { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 2; flex-shrink: 0; transition: transform 0.2s; margin-left: auto; }
+        .chevron-icon.open { transform: rotate(90deg); }
+        .btn-rename-folder {
+            display: inline-flex; align-items: center; justify-content: center;
+            padding: 4px 8px; border-radius: 6px; border: none;
+            font-size: 0.68rem; font-weight: 600; font-family: var(--font-mono);
+            cursor: pointer; transition: all 0.18s; white-space: nowrap;
+            background: rgba(255,255,255,0.03); color: var(--muted);
+            opacity: 0; pointer-events: none;
+        }
+        .folder-row:hover .btn-rename-folder { opacity: 1; pointer-events: auto; }
+        .btn-rename-folder:hover { background: rgba(255,255,255,0.08); color: var(--muted2); }
+
         .file-item {
             display: flex; align-items: center; justify-content: space-between;
             padding: 10px 12px; border-radius: 10px; margin: 3px 0;
@@ -294,7 +314,7 @@
         </div>
         <div class="vault-name-wrap">
             <input type="text" id="vaultTitle" value="Personal Secure Vault" spellcheck="false" autocomplete="off">
-            <div class="vault-subtitle">AES-256-GCM · Zero-knowledge · Offline</div>
+            <div class="vault-subtitle">AES-256-GCM · PBKDF2-SHA-256 · Offline · Client-side</div>
         </div>
         <div id="vaultStats"></div>
     </div>
@@ -371,16 +391,36 @@
 
 </div>
 
-<footer>SECURE VAULT PRO &nbsp;·&nbsp; v1.4.0 &nbsp;·&nbsp; AES-256-GCM &nbsp;·&nbsp; ZERO-KNOWLEDGE</footer>
+<footer>SECURE VAULT PRO &nbsp;·&nbsp; v1.4.1 &nbsp;·&nbsp; AES-256-GCM &nbsp;·&nbsp; CLIENT-SIDE ENCRYPTION</footer>
 
 <script>
 'use strict';
 
-const APP_VERSION     = '1.4.0';
-const MAGIC           = new Uint8Array([0x56, 0x4C, 0x54, 0x01]);
+const APP_VERSION     = '1.4.1';
+// Three distinct on-disk formats, handled in tryDecrypt:
+//
+//   Format C  (this version, v1.4.1+):
+//     MAGIC_C(4=[56 4C 54 02]) + SALT(16) + IV(12) + CIPHER
+//     AES-GCM additionalData = MAGIC_C + SALT  ← tamper-evident
+//
+//   Format B  (original v1.4.0, read-only):
+//     MAGIC_B(4=[56 4C 54 01]) + SALT(16) + IV(12) + CIPHER
+//     AES-GCM NO additionalData  ← matches how those files were encrypted
+//
+//   Format A  (legacy, pre-magic, read-only):
+//     SALT(16) + IV(12) + CIPHER  (no magic header at all)
+//     AES-GCM NO additionalData
+//
+// New exports always write Format C.  Import accepts all three.
+const MAGIC_C         = new Uint8Array([0x56, 0x4C, 0x54, 0x02]); // v1.4.1+ with AAD
+const MAGIC_B         = new Uint8Array([0x56, 0x4C, 0x54, 0x01]); // v1.4.0  no  AAD
 const MAX_FILE_BYTES  = 50  * 1024 * 1024;
 const MAX_VAULT_BYTES = 100 * 1024 * 1024;
-const OFFSETS = { salt: 4, iv: 20, cipher: 32 };
+
+// Byte offsets for Format B and C (both start with a 4-byte magic header)
+const FMT_MAGIC = { saltStart: 4, saltEnd: 20, ivStart: 20, ivEnd: 32, cipherStart: 32 };
+// Byte offsets for Format A (no magic header)
+const FMT_LEGACY = { saltStart: 0, saltEnd: 16, ivStart: 16, ivEnd: 28, cipherStart: 28 };
 
 let vaultFiles     = [];
 let deferredPrompt = null;
@@ -419,9 +459,9 @@ function showModal({ message, hasInput=false, placeholder='', defaultValue='',
     });
 }
 
-const modalAlert   = msg           => showModal({ message: msg, confirmLabel: 'Got it' });
-const modalConfirm = (msg, lbl, d) => showModal({ message: msg, confirmLabel: lbl, cancelLabel: 'Cancel', isDanger: !!d });
-const modalPrompt  = (msg, def, ph)=> showModal({ message: msg, hasInput: true, defaultValue: def||'', placeholder: ph||'', confirmLabel: 'OK', cancelLabel: 'Cancel' });
+const modalAlert   = msg                          => showModal({ message: msg, confirmLabel: 'Got it' });
+const modalConfirm = (msg, confirmLabel, isDanger) => showModal({ message: msg, confirmLabel, cancelLabel: 'Cancel', isDanger: !!isDanger });
+const modalPrompt  = (msg, defaultValue, placeholder) => showModal({ message: msg, hasInput: true, defaultValue: defaultValue||'', placeholder: placeholder||'', confirmLabel: 'OK', cancelLabel: 'Cancel' });
 
 // ── Drag & Drop ────────────────────────────────────────────────────────────
 const dropZone  = document.getElementById('dropZone');
@@ -429,47 +469,125 @@ const fileInput = document.getElementById('fileInput');
 fileInput.addEventListener('change', updateSelectedLabel);
 ['dragenter','dragover'].forEach(ev => dropZone.addEventListener(ev, e => { e.preventDefault(); dropZone.classList.add('dragging'); }));
 ['dragleave','drop'].forEach(ev => dropZone.addEventListener(ev, e => { e.preventDefault(); dropZone.classList.remove('dragging'); }));
-dropZone.addEventListener('drop', e => { if (e.dataTransfer.files.length) { fileInput.files = e.dataTransfer.files; updateSelectedLabel(); } });
+dropZone.addEventListener('drop', e => {
+    if (e.dataTransfer.files.length) {
+        fileInput.files = e.dataTransfer.files;
+        updateSelectedLabel();
+        // FIX: clear stale size warning when a new file selection is made
+        document.getElementById('sizeWarning').textContent = '';
+    }
+});
 
 function updateSelectedLabel() {
     const files = Array.from(fileInput.files);
     const el    = document.getElementById('selectedFiles');
+    // FIX: clear stale size warning on every file input change
+    document.getElementById('sizeWarning').textContent = '';
     if (!files.length) { el.textContent = ''; return; }
     el.textContent = `${files.length} file${files.length!==1?'s':''} selected · ${formatBytes(files.reduce((s,f)=>s+f.size,0))}`;
 }
 
 // ── PWA ────────────────────────────────────────────────────────────────────
 function setupPWA() {
-    const manifest = { name:'Secure Vault Pro', short_name:'Vault', start_url:'.', display:'standalone', background_color:'#070b14', theme_color:'#070b14',
-        icons:[{src:"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='192' height='192' viewBox='0 0 24 24' fill='%2322d3ee'%3E%3Cpath d='M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z'/%3E%3C/svg%3E",sizes:'192x192',type:'image/svg+xml'}]
+    const manifest = {
+        name:'Secure Vault Pro', short_name:'Vault', start_url:'.', display:'standalone',
+        background_color:'#070b14', theme_color:'#070b14',
+        icons:[{
+            src:"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='192' height='192' viewBox='0 0 24 24' fill='%2322d3ee'%3E%3Cpath d='M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z'/%3E%3C/svg%3E",
+            sizes:'192x192', type:'image/svg+xml'
+        }]
     };
-    const link = Object.assign(document.createElement('link'), { rel:'manifest', href: URL.createObjectURL(new Blob([JSON.stringify(manifest)],{type:'application/json'})) });
+    // FIX: store blob URL and revoke it after appending, preventing the leak
+    const manifestBlob = new Blob([JSON.stringify(manifest)], {type:'application/json'});
+    const manifestURL  = URL.createObjectURL(manifestBlob);
+    const link = Object.assign(document.createElement('link'), { rel:'manifest', href: manifestURL });
     document.head.appendChild(link);
-    window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredPrompt = e; document.getElementById('installBtn').style.display='inline-flex'; });
+    // Revoke after a short delay — the browser has parsed it by then
+    setTimeout(() => URL.revokeObjectURL(manifestURL), 5000);
+
+    window.addEventListener('beforeinstallprompt', e => {
+        e.preventDefault();
+        deferredPrompt = e;
+        document.getElementById('installBtn').style.display='inline-flex';
+    });
 }
-document.getElementById('installBtn').addEventListener('click', () => { if (deferredPrompt) { deferredPrompt.prompt(); document.getElementById('installBtn').style.display='none'; deferredPrompt=null; } });
+document.getElementById('installBtn').addEventListener('click', () => {
+    if (deferredPrompt) {
+        deferredPrompt.prompt();
+        document.getElementById('installBtn').style.display='none';
+        deferredPrompt=null;
+    }
+});
 
 // ── Utilities ──────────────────────────────────────────────────────────────
-function formatBytes(b) { if(!b)return''; const k=1024,s=['B','KB','MB','GB'],i=Math.floor(Math.log(b)/Math.log(k)); return parseFloat((b/Math.pow(k,i)).toFixed(1))+' '+s[i]; }
+// FIX: handle 0 bytes without crashing (log(0) = -Infinity)
+function formatBytes(b) {
+    if (b === 0) return '0 B';
+    if (!b || b < 0) return '';
+    const k=1024, s=['B','KB','MB','GB'], i=Math.floor(Math.log(b)/Math.log(k));
+    return parseFloat((b/Math.pow(k,i)).toFixed(1))+' '+s[i];
+}
 
 function updateVaultStats() {
     const total = vaultFiles.reduce((s,f)=>s+(f.size||0),0);
-    document.getElementById('vaultStats').textContent = vaultFiles.length ? `${vaultFiles.length} file${vaultFiles.length!==1?'s':''} · ${formatBytes(total)}` : '';
+    document.getElementById('vaultStats').textContent = vaultFiles.length
+        ? `${vaultFiles.length} file${vaultFiles.length!==1?'s':''} · ${formatBytes(total)}`
+        : '';
 }
 
 // ── Crypto ─────────────────────────────────────────────────────────────────
-async function deriveKey(pwd, salt) {
-    const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(pwd), 'PBKDF2', false, ['deriveKey']);
-    return crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations:600000,hash:'SHA-256'}, base, {name:'AES-GCM',length:256}, false, ['encrypt','decrypt']);
+async function deriveKey(password, salt) {
+    const raw = await crypto.subtle.importKey(
+        'raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveKey']
+    );
+    return crypto.subtle.deriveKey(
+        { name:'PBKDF2', salt, iterations:600000, hash:'SHA-256' },
+        raw,
+        { name:'AES-GCM', length:256 },
+        false,
+        ['encrypt','decrypt']
+    );
 }
-async function tryDecrypt(pwd, buf) {
-    const magic = new Uint8Array(buf.slice(0,4));
-    if (magic.every((b,i)=>b===MAGIC[i])) {
-        const salt=new Uint8Array(buf.slice(OFFSETS.salt,OFFSETS.iv)), iv=new Uint8Array(buf.slice(OFFSETS.iv,OFFSETS.cipher)), key=await deriveKey(pwd,salt);
-        return crypto.subtle.decrypt({name:'AES-GCM',iv},key,buf.slice(OFFSETS.cipher));
+
+function buildAAD(magicBytes, salt) {
+    const aad = new Uint8Array(magicBytes.length + salt.length);
+    aad.set(magicBytes, 0);
+    aad.set(salt, magicBytes.length);
+    return aad;
+}
+
+function matchesMagic(header, magic) {
+    return header.length >= 4 && magic.every((b, i) => b === header[i]);
+}
+
+async function tryDecrypt(password, buf) {
+    const header = new Uint8Array(buf.slice(0, 4));
+
+    if (matchesMagic(header, MAGIC_C)) {
+        // Format C (v1.4.1+): MAGIC_C + SALT + IV + CIPHER, with AAD
+        const salt   = new Uint8Array(buf.slice(FMT_MAGIC.saltStart, FMT_MAGIC.saltEnd));
+        const iv     = new Uint8Array(buf.slice(FMT_MAGIC.ivStart,   FMT_MAGIC.ivEnd));
+        const cipher = buf.slice(FMT_MAGIC.cipherStart);
+        const key    = await deriveKey(password, salt);
+        return crypto.subtle.decrypt({ name:'AES-GCM', iv, additionalData: buildAAD(MAGIC_C, salt) }, key, cipher);
     }
-    const salt=new Uint8Array(buf.slice(0,16)), iv=new Uint8Array(buf.slice(16,28)), key=await deriveKey(pwd,salt);
-    return crypto.subtle.decrypt({name:'AES-GCM',iv},key,buf.slice(28));
+
+    if (matchesMagic(header, MAGIC_B)) {
+        // Format B (v1.4.0): MAGIC_B + SALT + IV + CIPHER, NO AAD
+        // These files were encrypted without additionalData — must match exactly.
+        const salt   = new Uint8Array(buf.slice(FMT_MAGIC.saltStart, FMT_MAGIC.saltEnd));
+        const iv     = new Uint8Array(buf.slice(FMT_MAGIC.ivStart,   FMT_MAGIC.ivEnd));
+        const cipher = buf.slice(FMT_MAGIC.cipherStart);
+        const key    = await deriveKey(password, salt);
+        return crypto.subtle.decrypt({ name:'AES-GCM', iv }, key, cipher);
+    }
+
+    // Format A (legacy, pre-magic): SALT + IV + CIPHER, NO AAD
+    const salt   = new Uint8Array(buf.slice(FMT_LEGACY.saltStart, FMT_LEGACY.saltEnd));
+    const iv     = new Uint8Array(buf.slice(FMT_LEGACY.ivStart,   FMT_LEGACY.ivEnd));
+    const cipher = buf.slice(FMT_LEGACY.cipherStart);
+    const key    = await deriveKey(password, salt);
+    return crypto.subtle.decrypt({ name:'AES-GCM', iv }, key, cipher);
 }
 
 // ── Strength ───────────────────────────────────────────────────────────────
@@ -488,142 +606,383 @@ function updateStrength() {
 function resetUI() {
     document.getElementById('vaultTitle').value='Personal Secure Vault';
     ['searchInput','folderPath','fileTags','password','vaultUpload','fileInput'].forEach(id=>{ document.getElementById(id).value=''; });
-    document.getElementById('selectedFiles').textContent=''; document.getElementById('sizeWarning').textContent=''; updateStrength();
+    document.getElementById('selectedFiles').textContent='';
+    document.getElementById('sizeWarning').textContent='';
+    updateStrength();
 }
 
 // ── Add files ──────────────────────────────────────────────────────────────
-async function addFile() {
-    document.getElementById('sizeWarning').textContent='';
-    if (!fileInput.files.length) { await modalAlert('Select at least one file first.'); return; }
-    const path=document.getElementById('folderPath').value.trim()||'Root';
-    const tags=document.getElementById('fileTags').value.split(',').map(t=>t.trim()).filter(Boolean);
-    const files=Array.from(fileInput.files);
-    for (const f of files) { if (f.size>MAX_FILE_BYTES) { await modalAlert(`"${f.name}" is ${formatBytes(f.size)}, which exceeds the 50 MB per-file limit.`); return; } }
-    const currentTotal=vaultFiles.reduce((s,f)=>s+(f.size||0),0), incoming=files.reduce((s,f)=>s+f.size,0);
-    if (currentTotal+incoming>MAX_VAULT_BYTES) { await modalAlert(`Adding ${formatBytes(incoming)} would exceed the 100 MB vault limit.\nCurrent vault: ${formatBytes(currentTotal)}.`); return; }
-    let processed=0;
-    files.forEach(file => {
-        const reader=new FileReader();
-        reader.onload=async e => {
-            vaultFiles.push({id:crypto.randomUUID(),name:file.name,path,tags:[...tags],content:e.target.result,modified:new Date().toLocaleString(),size:file.size});
-            if (++processed===files.length) { document.getElementById('searchInput').value=''; renderTree(); fileInput.value=''; updateSelectedLabel(); await modalAlert(`✅ ${files.length} file${files.length!==1?'s':''} added to "${path}".`); }
-        };
+// FIX: replaced forEach+FileReader callback counter with Promise.all to
+// eliminate the race condition where two files finishing simultaneously
+// could both trigger the completion alert.
+function readFileAsDataURL(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload  = e => resolve(e.target.result);
+        reader.onerror = () => reject(new Error(`Failed to read "${file.name}"`));
         reader.readAsDataURL(file);
     });
 }
 
+async function addFile() {
+    document.getElementById('sizeWarning').textContent = '';
+    if (!fileInput.files.length) { await modalAlert('Select at least one file first.'); return; }
+
+    const path  = document.getElementById('folderPath').value.trim() || 'Root';
+    const tags  = document.getElementById('fileTags').value.split(',').map(t=>t.trim()).filter(Boolean);
+    const files = Array.from(fileInput.files);
+
+    for (const f of files) {
+        if (f.size > MAX_FILE_BYTES) {
+            await modalAlert(`"${f.name}" is ${formatBytes(f.size)}, which exceeds the 50 MB per-file limit.`);
+            return;
+        }
+    }
+
+    const currentTotal = vaultFiles.reduce((s,f)=>s+(f.size||0), 0);
+    const incoming     = files.reduce((s,f)=>s+f.size, 0);
+    if (currentTotal + incoming > MAX_VAULT_BYTES) {
+        document.getElementById('sizeWarning').textContent =
+            `Adding ${formatBytes(incoming)} would exceed the 100 MB vault limit. Current vault: ${formatBytes(currentTotal)}.`;
+        return;
+    }
+
+    try {
+        const dataURLs = await Promise.all(files.map(readFileAsDataURL));
+        const now      = new Date().toLocaleString();
+        dataURLs.forEach((content, i) => {
+            vaultFiles.push({
+                id:       crypto.randomUUID(),
+                name:     files[i].name,
+                path,
+                tags:     [...tags],
+                content,
+                modified: now,
+                size:     files[i].size
+            });
+        });
+        document.getElementById('searchInput').value = '';
+        renderTree();
+        fileInput.value = '';
+        updateSelectedLabel();
+        await modalAlert(`✅ ${files.length} file${files.length!==1?'s':''} added to "${path}".`);
+    } catch (err) {
+        await modalAlert(`❌ Error reading files: ${err.message}`);
+    }
+}
+
 // ── File ops ───────────────────────────────────────────────────────────────
-async function renameFile(id) { const f=vaultFiles.find(x=>x.id===id); if(!f)return; const n=await modalPrompt('New filename:',f.name); if(n!==null&&n.trim()&&n.trim()!==f.name){f.name=n.trim();f.modified=new Date().toLocaleString();renderTree();} }
-async function editTags(id)   { const f=vaultFiles.find(x=>x.id===id); if(!f)return; const s=await modalPrompt('Tags (comma-separated):',f.tags.join(', ')); if(s!==null){f.tags=s.split(',').map(t=>t.trim()).filter(Boolean);f.modified=new Date().toLocaleString();renderTree();} }
-async function moveFile(id)   { const f=vaultFiles.find(x=>x.id===id); if(!f)return; const p=await modalPrompt('New folder path:',f.path); if(p!==null&&p.trim()!==f.path){f.path=p.trim()||'Root';f.modified=new Date().toLocaleString();renderTree();} }
-async function deleteFile(id) { const f=vaultFiles.find(x=>x.id===id); if(!f)return; if(await modalConfirm(`Delete "${f.name}" permanently?`,'Delete',true)){vaultFiles=vaultFiles.filter(x=>x.id!==id);renderTree();} }
-async function renameFolderPrompt(fp) {
-    const old=fp.split('/').pop(), nn=await modalPrompt(`Rename "${old}" to:`,old);
-    if(!nn||nn.trim()===old)return;
-    const np=[...fp.split('/').slice(0,-1),nn.trim()].join('/');
-    vaultFiles.forEach(f=>{ if(f.path===fp||f.path.startsWith(fp+'/')){f.path=f.path.replace(fp,np);f.modified=new Date().toLocaleString();} });
+async function renameFile(id) {
+    const f = vaultFiles.find(x=>x.id===id);
+    if (!f) return;
+    const n = await modalPrompt('New filename:', f.name);
+    if (n !== null && n.trim() && n.trim() !== f.name) {
+        f.name = n.trim(); f.modified = new Date().toLocaleString(); renderTree();
+    }
+}
+async function editTags(id) {
+    const f = vaultFiles.find(x=>x.id===id);
+    if (!f) return;
+    const s = await modalPrompt('Tags (comma-separated):', f.tags.join(', '));
+    if (s !== null) {
+        f.tags = s.split(',').map(t=>t.trim()).filter(Boolean);
+        f.modified = new Date().toLocaleString(); renderTree();
+    }
+}
+async function moveFile(id) {
+    const f = vaultFiles.find(x=>x.id===id);
+    if (!f) return;
+    const p = await modalPrompt('New folder path:', f.path);
+    if (p !== null && p.trim() !== f.path) {
+        f.path = p.trim() || 'Root'; f.modified = new Date().toLocaleString(); renderTree();
+    }
+}
+async function deleteFile(id) {
+    const f = vaultFiles.find(x=>x.id===id);
+    if (!f) return;
+    if (await modalConfirm(`Delete "${f.name}" permanently?`, 'Delete', true)) {
+        vaultFiles = vaultFiles.filter(x=>x.id!==id); renderTree();
+    }
+}
+async function renameFolderPrompt(folderPath) {
+    const oldName  = folderPath.split('/').pop();
+    const newName  = await modalPrompt(`Rename "${oldName}" to:`, oldName);
+    if (!newName || newName.trim() === oldName) return;
+    const newPath  = [...folderPath.split('/').slice(0,-1), newName.trim()].join('/');
+    vaultFiles.forEach(f => {
+        if (f.path === folderPath || f.path.startsWith(folderPath + '/')) {
+            f.path = f.path.replace(folderPath, newPath);
+            f.modified = new Date().toLocaleString();
+        }
+    });
     renderTree();
 }
 async function closeVault() {
-    if(!await modalConfirm('Close vault and clear all files from memory?','Close & Clear',true))return;
-    vaultFiles=[];resetUI();renderTree();await modalAlert('✅ Vault closed. Memory cleared.');
+    if (!await modalConfirm('Close vault and clear all files from memory?', 'Close & Clear', true)) return;
+    vaultFiles = []; resetUI(); renderTree();
+    await modalAlert('✅ Vault closed. Memory cleared.');
 }
 
-// ── Render tree (DOM only — no innerHTML with user data) ───────────────────
+// ── Vault schema validation ────────────────────────────────────────────────
+// FIX: validate each imported file entry to reject crafted/malformed vaults
+const ALLOWED_CONTENT_PREFIXES = ['data:'];
+function isValidFileEntry(entry) {
+    if (!entry || typeof entry !== 'object') return false;
+    if (typeof entry.name !== 'string' || !entry.name.trim()) return false;
+    if (typeof entry.path !== 'string') return false;
+    if (!Array.isArray(entry.tags)) return false;
+    if (typeof entry.content !== 'string') return false;
+    if (!ALLOWED_CONTENT_PREFIXES.some(p => entry.content.startsWith(p))) return false;
+    // Guard against absurdly large entries sneaking past the size checks
+    if (entry.content.length > (MAX_FILE_BYTES * 1.5)) return false;
+    return true;
+}
+
+// ── Render tree ────────────────────────────────────────────────────────────
 function renderTree() {
-    const container=document.getElementById('treeContainer');
-    const search=document.getElementById('searchInput').value.toLowerCase().trim();
-    container.innerHTML='';
+    const container = document.getElementById('treeContainer');
+    const search    = document.getElementById('searchInput').value.toLowerCase().trim();
+    container.innerHTML = '';
     updateVaultStats();
 
     if (!vaultFiles.length) {
-        const e=document.createElement('div'); e.className='empty-state';
-        e.innerHTML='<div class="empty-state-icon">🗄️</div><div class="empty-state-title">Vault is empty</div><div class="empty-state-sub">Add files above or import an existing vault</div>';
+        const e = document.createElement('div'); e.className = 'empty-state';
+        e.innerHTML = '<div class="empty-state-icon">🗄️</div><div class="empty-state-title">Vault is empty</div><div class="empty-state-sub">Add files above or import an existing vault</div>';
         container.appendChild(e); return;
     }
-    const filtered=vaultFiles.filter(f=>f.name.toLowerCase().includes(search)||f.path.toLowerCase().includes(search)||f.tags.some(t=>t.toLowerCase().includes(search)));
+
+    const filtered = vaultFiles.filter(f =>
+        f.name.toLowerCase().includes(search) ||
+        f.path.toLowerCase().includes(search) ||
+        f.tags.some(t => t.toLowerCase().includes(search))
+    );
+
     if (!filtered.length) {
-        const e=document.createElement('div'); e.className='empty-state';
-        e.innerHTML='<div class="empty-state-icon">🔍</div><div class="empty-state-title">No results</div><div class="empty-state-sub">Try a different search term</div>';
+        const e = document.createElement('div'); e.className = 'empty-state';
+        e.innerHTML = '<div class="empty-state-icon">🔍</div><div class="empty-state-title">No results</div><div class="empty-state-sub">Try a different search term</div>';
         container.appendChild(e); return;
     }
 
-    const tree={};
-    filtered.forEach(file=>{ const parts=file.path.split('/').filter(Boolean); let ref=tree; parts.forEach((p,i)=>{ if(!ref[p])ref[p]={_files:[],_folders:{}}; if(i===parts.length-1)ref[p]._files.push(file); else ref=ref[p]._folders; }); });
+    // FIX: handle empty-path files gracefully (they land in 'Root' bucket)
+    const tree = {};
+    filtered.forEach(file => {
+        const parts = file.path.split('/').filter(Boolean);
+        // If path was empty or only slashes, treat as Root
+        const effectiveParts = parts.length ? parts : ['Root'];
+        let ref = tree;
+        effectiveParts.forEach((p, i) => {
+            if (!ref[p]) ref[p] = { _files: [], _folders: {} };
+            if (i === effectiveParts.length - 1) ref[p]._files.push(file);
+            else ref = ref[p]._folders;
+        });
+    });
 
-    const fileIconHTML = `<svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4 4a2 2 0 0 1 2-2h4.586A2 2 0 0 1 12 2.586L15.414 6A2 2 0 0 1 16 7.414V16a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4Zm2 6a1 1 0 0 1 1-1h6a1 1 0 1 1 0 2H7a1 1 0 0 1-1-1Zm1 3a1 1 0 1 0 0 2h6a1 1 0 1 0 0-2H7Z" clip-rule="evenodd"/></svg>`;
+    const fileIconHTML   = `<svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4 4a2 2 0 0 1 2-2h4.586A2 2 0 0 1 12 2.586L15.414 6A2 2 0 0 1 16 7.414V16a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4Zm2 6a1 1 0 0 1 1-1h6a1 1 0 1 1 0 2H7a1 1 0 0 1-1-1Zm1 3a1 1 0 1 0 0 2h6a1 1 0 1 0 0-2H7Z" clip-rule="evenodd"/></svg>`;
     const folderIconHTML = `<svg class="folder-icon" viewBox="0 0 20 20" fill="currentColor"><path d="M2 6a2 2 0 0 1 2-2h4l2 2h4a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6Z"/></svg>`;
+    const chevronHTML    = `<svg class="chevron-icon open" viewBox="0 0 12 12"><polyline points="4,2 8,6 4,10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 
     function makeFileItem(file) {
-        const row=document.createElement('div'); row.className='file-item';
-        const info=document.createElement('div'); info.className='file-info';
-        const link=document.createElement('a'); link.className='file-link'; link.href=file.content; link.download=file.name; link.title=file.name;
-        link.innerHTML=fileIconHTML; // static SVG, not user data
-        const ns=document.createElement('span'); ns.textContent=file.name; link.appendChild(ns);
-        const meta=document.createElement('div'); meta.className='file-meta';
-        file.tags.forEach(t=>{ const tag=document.createElement('span'); tag.className='tag'; tag.textContent=t; meta.appendChild(tag); });
-        const ts=document.createElement('span'); ts.className='timestamp'; ts.textContent=file.modified+(file.size?' · '+formatBytes(file.size):''); meta.appendChild(ts);
+        const row    = document.createElement('div'); row.className = 'file-item';
+        const info   = document.createElement('div'); info.className = 'file-info';
+        const link   = document.createElement('a');   link.className = 'file-link';
+        link.href = file.content; link.download = file.name; link.title = file.name;
+        link.innerHTML = fileIconHTML;
+        const ns = document.createElement('span'); ns.textContent = file.name; link.appendChild(ns);
+        const meta = document.createElement('div'); meta.className = 'file-meta';
+        file.tags.forEach(t => {
+            const tag = document.createElement('span'); tag.className = 'tag'; tag.textContent = t; meta.appendChild(tag);
+        });
+        const ts = document.createElement('span'); ts.className = 'timestamp';
+        ts.textContent = file.modified + (file.size ? ' · ' + formatBytes(file.size) : '');
+        meta.appendChild(ts);
         info.appendChild(link); info.appendChild(meta);
-        const actions=document.createElement('div'); actions.className='file-actions';
-        [{label:'Move',cls:'bx-ghost',fn:()=>moveFile(file.id)},{label:'Tags',cls:'bx-purple',fn:()=>editTags(file.id)},{label:'Rename',cls:'bx-amber',fn:()=>renameFile(file.id)},{label:'Delete',cls:'bx-danger',fn:()=>deleteFile(file.id)}]
-            .forEach(({label,cls,fn})=>{ const b=document.createElement('button'); b.className='btn-xs '+cls; b.textContent=label; b.addEventListener('click',fn); actions.appendChild(b); });
+        const actions = document.createElement('div'); actions.className = 'file-actions';
+        [
+            { label:'Move',   cls:'bx-ghost',  fn:()=>moveFile(file.id)   },
+            { label:'Tags',   cls:'bx-purple', fn:()=>editTags(file.id)   },
+            { label:'Rename', cls:'bx-amber',  fn:()=>renameFile(file.id) },
+            { label:'Delete', cls:'bx-danger', fn:()=>deleteFile(file.id) }
+        ].forEach(({label,cls,fn}) => {
+            const b = document.createElement('button'); b.className = 'btn-xs ' + cls;
+            b.textContent = label; b.addEventListener('click', fn); actions.appendChild(b);
+        });
         row.appendChild(info); row.appendChild(actions); return row;
     }
 
     function buildBranch(obj, prefix='', isRoot=true) {
-        const wrap=document.createElement('div'); if(!isRoot)wrap.className='tree-node';
+        const wrap = document.createElement('div');
+        if (!isRoot) wrap.className = 'tree-node';
+
         for (const key of Object.keys(obj)) {
-            const fp=prefix?`${prefix}/${key}`:key, node=document.createElement('div');
-            const label=document.createElement('span'); label.className='folder-name';
-            label.innerHTML=folderIconHTML; // static SVG
-            const ns=document.createElement('span'); ns.textContent=key; label.appendChild(ns);
-            label.dataset.fullPath=fp; label.addEventListener('click',function(){renameFolderPrompt(this.dataset.fullPath);});
-            node.appendChild(label);
-            if(Object.keys(obj[key]._folders).length)node.appendChild(buildBranch(obj[key]._folders,fp,false));
-            obj[key]._files.forEach(f=>node.appendChild(makeFileItem(f)));
+            const fp   = prefix ? `${prefix}/${key}` : key;
+            const node = document.createElement('div');
+
+            // FIX: folder row now has separate toggle (expand/collapse) and
+            // rename button, so clicking the folder no longer accidentally
+            // triggers rename. The chevron rotates to indicate open/closed state.
+            const folderRow = document.createElement('div');
+            folderRow.className = 'folder-row';
+
+            const toggleBtn = document.createElement('button');
+            toggleBtn.className = 'folder-toggle';
+            toggleBtn.innerHTML = folderIconHTML;
+            const folderLabel = document.createElement('span');
+            folderLabel.textContent = key;
+            toggleBtn.appendChild(folderLabel);
+            toggleBtn.insertAdjacentHTML('beforeend', chevronHTML);
+
+            const renameBtn = document.createElement('button');
+            renameBtn.className = 'btn-rename-folder';
+            renameBtn.textContent = 'Rename';
+            renameBtn.title = 'Rename folder';
+
+            folderRow.appendChild(toggleBtn);
+            folderRow.appendChild(renameBtn);
+            node.appendChild(folderRow);
+
+            // Children container (collapsible)
+            const children = document.createElement('div');
+            if (Object.keys(obj[key]._folders).length) children.appendChild(buildBranch(obj[key]._folders, fp, false));
+            obj[key]._files.forEach(f => children.appendChild(makeFileItem(f)));
+            node.appendChild(children);
+
+            // Toggle collapse/expand
+            toggleBtn.addEventListener('click', () => {
+                const isOpen = children.style.display !== 'none';
+                children.style.display = isOpen ? 'none' : '';
+                const chevron = toggleBtn.querySelector('.chevron-icon');
+                if (chevron) chevron.classList.toggle('open', !isOpen);
+            });
+
+            // Rename wired separately, clearly labelled
+            renameBtn.addEventListener('click', e => {
+                e.stopPropagation();
+                renameFolderPrompt(fp);
+            });
+
             wrap.appendChild(node);
         }
         return wrap;
     }
+
     container.appendChild(buildBranch(tree));
 }
 
 // ── Export ─────────────────────────────────────────────────────────────────
+// Writes Format C: MAGIC_C(4) + SALT(16) + IV(12) + CIPHER
+// AES-GCM additionalData = MAGIC_C + SALT, binding the unencrypted header
+// to the ciphertext so any tampering is detected on import.
+// Filename: <vault-name>_v<version>.vault
+// Uses showSaveFilePicker (File System Access API) when available so the user
+// can choose the destination folder; falls back to a blob-URL <a> download on
+// browsers that don't support it (Firefox, Safari < 18).
 async function downloadVault() {
-    const pwd=document.getElementById('password').value;
-    if(!pwd){await modalAlert('Enter a master password before exporting.');return;}
-    const title=document.getElementById('vaultTitle').value.trim()||'vault', safe=title.replace(/[^a-z0-9]/gi,'_').toLowerCase();
-    const salt=crypto.getRandomValues(new Uint8Array(16)), iv=crypto.getRandomValues(new Uint8Array(12)), key=await deriveKey(pwd,salt);
-    const cipher=await crypto.subtle.encrypt({name:'AES-GCM',iv},key,new TextEncoder().encode(JSON.stringify({metadata:{title,version:APP_VERSION,timestamp:new Date().toISOString()},files:vaultFiles})));
-    const url=URL.createObjectURL(new Blob([MAGIC,salt,iv,cipher]));
-    Object.assign(document.createElement('a'),{href:url,download:`${safe}.vault`}).click();
-    setTimeout(()=>URL.revokeObjectURL(url),5000);
+    const pwd = document.getElementById('password').value;
+    if (!pwd) { await modalAlert('Enter a master password before exporting.'); return; }
+
+    const title    = document.getElementById('vaultTitle').value.trim() || 'vault';
+    const safeName = title.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+    const fileName = `${safeName}_v${APP_VERSION}.vault`;
+
+    const salt = crypto.getRandomValues(new Uint8Array(16));
+    const iv   = crypto.getRandomValues(new Uint8Array(12));
+    const key  = await deriveKey(pwd, salt);
+    const aad  = buildAAD(MAGIC_C, salt);
+
+    const plaintext = new TextEncoder().encode(JSON.stringify({
+        metadata: { title, version: APP_VERSION, timestamp: new Date().toISOString() },
+        files:    vaultFiles
+    }));
+
+    const cipher = await crypto.subtle.encrypt(
+        { name:'AES-GCM', iv, additionalData: aad },
+        key,
+        plaintext
+    );
+
+    // Layout: MAGIC_C(4) + SALT(16) + IV(12) + CIPHER
+    const blob = new Blob([MAGIC_C, salt, iv, cipher], { type: 'application/octet-stream' });
+
+    if (typeof window.showSaveFilePicker === 'function') {
+        // File System Access API: user picks the destination folder and filename
+        let handle;
+        try {
+            handle = await window.showSaveFilePicker({
+                suggestedName: fileName,
+                types: [{ description: 'Vault file', accept: { 'application/octet-stream': ['.vault'] } }]
+            });
+        } catch (e) {
+            if (e.name === 'AbortError') return; // user cancelled — silent exit
+            throw e;
+        }
+        const writable = await handle.createWritable();
+        await writable.write(blob);
+        await writable.close();
+    } else {
+        // Fallback: classic blob-URL download (browser picks the folder)
+        const url = URL.createObjectURL(blob);
+        Object.assign(document.createElement('a'), { href: url, download: fileName }).click();
+        setTimeout(() => URL.revokeObjectURL(url), 5000);
+    }
 }
 
 // ── Import ─────────────────────────────────────────────────────────────────
 async function loadVault() {
-    const pwd=document.getElementById('password').value, file=document.getElementById('vaultUpload').files[0];
-    if(!pwd){await modalAlert('Enter your master password before importing.');return;}
-    if(!file)return;
-    if(vaultFiles.length>0){
-        const ok=await modalConfirm(`Importing will replace your current vault (${vaultFiles.length} file${vaultFiles.length!==1?'s':''}).\n\nExport a backup first if needed.`,'Import & Replace',true);
-        if(!ok){document.getElementById('vaultUpload').value='';return;}
+    const pwd  = document.getElementById('password').value;
+    const file = document.getElementById('vaultUpload').files[0];
+    if (!pwd)  { await modalAlert('Enter your master password before importing.'); return; }
+    if (!file) return;
+
+    if (vaultFiles.length > 0) {
+        const ok = await modalConfirm(
+            `Importing will replace your current vault (${vaultFiles.length} file${vaultFiles.length!==1?'s':''}).\n\nExport a backup first if needed.`,
+            'Import & Replace', true
+        );
+        if (!ok) { document.getElementById('vaultUpload').value = ''; return; }
     }
+
     let dec;
-    try { dec=await tryDecrypt(pwd,await file.arrayBuffer()); }
-    catch { await modalAlert('❌ Wrong password, or this file is corrupted / not a vault.'); document.getElementById('vaultUpload').value=''; return; }
     try {
-        const imported=JSON.parse(new TextDecoder().decode(dec));
-        vaultFiles=imported.files||[];
-        if(imported.metadata?.title)document.getElementById('vaultTitle').value=imported.metadata.title;
-        document.getElementById('searchInput').value=''; renderTree();
-        await modalAlert('✅ Vault imported successfully!');
-    } catch { await modalAlert('❌ Vault data is corrupted or in an unrecognised format.'); }
-    document.getElementById('vaultUpload').value='';
+        dec = await tryDecrypt(pwd, await file.arrayBuffer());
+    } catch {
+        await modalAlert('❌ Wrong password, or this file is corrupted / not a vault.');
+        document.getElementById('vaultUpload').value = '';
+        return;
+    }
+
+    try {
+        const imported = JSON.parse(new TextDecoder().decode(dec));
+
+        // FIX: validate every file entry before accepting the import
+        const rawFiles = Array.isArray(imported.files) ? imported.files : [];
+        const validFiles   = [];
+        const invalidCount = rawFiles.reduce((n, entry) => {
+            if (isValidFileEntry(entry)) { validFiles.push(entry); return n; }
+            return n + 1;
+        }, 0);
+
+        vaultFiles = validFiles;
+        if (imported.metadata?.title) document.getElementById('vaultTitle').value = imported.metadata.title;
+        document.getElementById('searchInput').value = '';
+        renderTree();
+
+        const warn = invalidCount > 0
+            ? `\n⚠️ ${invalidCount} malformed entr${invalidCount!==1?'ies':'y'} were skipped.`
+            : '';
+        await modalAlert(`✅ Vault imported — ${validFiles.length} file${validFiles.length!==1?'s':''} loaded.${warn}`);
+    } catch {
+        await modalAlert('❌ Vault data is corrupted or in an unrecognised format.');
+    }
+    document.getElementById('vaultUpload').value = '';
 }
 
 // ── Auto-clear password on tab hide ───────────────────────────────────────
-document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='hidden'){document.getElementById('password').value='';updateStrength();} });
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') {
+        document.getElementById('password').value = '';
+        updateStrength();
+    }
+});
 
 // ── Init ───────────────────────────────────────────────────────────────────
 setupPWA();
