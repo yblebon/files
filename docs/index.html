@@ -7,8 +7,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="Vault">
     <title>Secure Vault Pro</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=Manrope:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; font-src 'self' data:; img-src data: blob:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none';">
     <style>
         :root {
             --bg:        #070b14;
@@ -27,9 +26,9 @@
             --text:      #e2e8f0;
             --muted:     #64748b;
             --muted2:    #94a3b8;
-            --font-head: 'Syne', sans-serif;
-            --font-body: 'Manrope', sans-serif;
-            --font-mono: 'DM Mono', monospace;
+            --font-head: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            --font-body: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            --font-mono: 'SF Mono', 'Cascadia Code', 'Fira Code', ui-monospace, 'Courier New', monospace;
         }
 
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -295,10 +294,10 @@
 </head>
 <body>
 
-<div id="modalOverlay">
-    <div id="modalBox">
+<div id="modalOverlay" role="presentation">
+    <div id="modalBox" role="dialog" aria-modal="true" aria-labelledby="modalMessage">
         <p id="modalMessage"></p>
-        <input type="text" id="modalInput" style="display:none;">
+        <input type="text" id="modalInput" style="display:none;" autocomplete="off" spellcheck="false" autocorrect="off">
         <div id="modalActions">
             <button id="modalCancel" class="btn btn-ghost" style="display:none;"></button>
             <button id="modalConfirm" class="btn btn-primary"></button>
@@ -313,7 +312,7 @@
             <svg viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>
         </div>
         <div class="vault-name-wrap">
-            <input type="text" id="vaultTitle" value="Personal Secure Vault" spellcheck="false" autocomplete="off">
+            <input type="text" id="vaultTitle" value="Personal Secure Vault" spellcheck="false" autocomplete="off" maxlength="100">
             <div class="vault-subtitle">AES-256-GCM · PBKDF2-SHA-256 · Offline · Client-side</div>
         </div>
         <div id="vaultStats"></div>
@@ -416,6 +415,8 @@ const MAGIC_C         = new Uint8Array([0x56, 0x4C, 0x54, 0x02]); // v1.4.1+ wit
 const MAGIC_B         = new Uint8Array([0x56, 0x4C, 0x54, 0x01]); // v1.4.0  no  AAD
 const MAX_FILE_BYTES  = 50  * 1024 * 1024;
 const MAX_VAULT_BYTES = 100 * 1024 * 1024;
+// Minimum valid vault: MAGIC(4) + SALT(16) + IV(12) + GCM tag(16) = 48 bytes
+const MIN_VAULT_BYTES = 48;
 
 // Byte offsets for Format B and C (both start with a 4-byte magic header)
 const FMT_MAGIC = { saltStart: 4, saltEnd: 20, ivStart: 20, ivEnd: 32, cipherStart: 32 };
@@ -446,11 +447,31 @@ function showModal({ message, hasInput=false, placeholder='', defaultValue='',
         else               cancelBtn.style.display = 'none';
 
         overlay.style.display = 'flex';
-        if (hasInput) setTimeout(() => inputEl.focus(), 60);
+
+        // Focus management: save caller's focus, restore on close
+        const prevFocus = document.activeElement;
+        setTimeout(() => (hasInput ? inputEl : confirmBtn).focus(), 60);
+
+        // Focus trap: keep Tab cycling inside the modal
+        function handleTrap(e) {
+            if (e.key !== 'Tab') return;
+            const focusable = [...document.getElementById('modalBox')
+                .querySelectorAll('button:not([disabled]),input:not([disabled])')]
+                .filter(el => el.style.display !== 'none');
+            const first = focusable[0], last = focusable[focusable.length - 1];
+            if (e.shiftKey) {
+                if (document.activeElement === first) { e.preventDefault(); last.focus(); }
+            } else {
+                if (document.activeElement === last) { e.preventDefault(); first.focus(); }
+            }
+        }
+        overlay.addEventListener('keydown', handleTrap);
 
         function close(result) {
             overlay.style.display = 'none';
+            overlay.removeEventListener('keydown', handleTrap);
             confirmBtn.onclick = cancelBtn.onclick = inputEl.onkeydown = null;
+            prevFocus?.focus();
             resolve(result);
         }
         confirmBtn.onclick = () => close(hasInput ? inputEl.value : true);
@@ -535,18 +556,38 @@ function updateVaultStats() {
         : '';
 }
 
+// ── Utilities (date) ───────────────────────────────────────────────────────
+// Stores ISO 8601 internally; formats for display. Handles legacy locale strings
+// (from vaults created before this fix) gracefully.
+function formatDate(ts) {
+    if (!ts) return '';
+    const d = new Date(ts);
+    return isNaN(d.getTime()) ? ts : d.toLocaleString();
+}
+
 // ── Crypto ─────────────────────────────────────────────────────────────────
+// Key cache: avoids re-running 600k PBKDF2 iterations for the same (password, salt)
+// keyed by "<password>::<salt-hex>". Cleared on vault close and tab hide.
+const _keyCache = new Map();
+function _clearKeyCache() { _keyCache.clear(); }
+
 async function deriveKey(password, salt) {
+    const saltHex = Array.from(salt).map(b => b.toString(16).padStart(2,'0')).join('');
+    const cacheKey = `${password}::${saltHex}`;
+    if (_keyCache.has(cacheKey)) return _keyCache.get(cacheKey);
     const raw = await crypto.subtle.importKey(
         'raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveKey']
     );
-    return crypto.subtle.deriveKey(
+    const key = await crypto.subtle.deriveKey(
         { name:'PBKDF2', salt, iterations:600000, hash:'SHA-256' },
         raw,
         { name:'AES-GCM', length:256 },
         false,
         ['encrypt','decrypt']
     );
+    if (_keyCache.size >= 10) _keyCache.delete(_keyCache.keys().next().value); // prune oldest
+    _keyCache.set(cacheKey, key);
+    return key;
 }
 
 function buildAAD(magicBytes, salt) {
@@ -649,7 +690,7 @@ async function addFile() {
 
     try {
         const dataURLs = await Promise.all(files.map(readFileAsDataURL));
-        const now      = new Date().toLocaleString();
+        const now      = new Date().toISOString();
         dataURLs.forEach((content, i) => {
             vaultFiles.push({
                 id:       crypto.randomUUID(),
@@ -677,7 +718,7 @@ async function renameFile(id) {
     if (!f) return;
     const n = await modalPrompt('New filename:', f.name);
     if (n !== null && n.trim() && n.trim() !== f.name) {
-        f.name = n.trim(); f.modified = new Date().toLocaleString(); renderTree();
+        f.name = n.trim(); f.modified = new Date().toISOString(); renderTree();
     }
 }
 async function editTags(id) {
@@ -686,7 +727,7 @@ async function editTags(id) {
     const s = await modalPrompt('Tags (comma-separated):', f.tags.join(', '));
     if (s !== null) {
         f.tags = s.split(',').map(t=>t.trim()).filter(Boolean);
-        f.modified = new Date().toLocaleString(); renderTree();
+        f.modified = new Date().toISOString(); renderTree();
     }
 }
 async function moveFile(id) {
@@ -694,7 +735,7 @@ async function moveFile(id) {
     if (!f) return;
     const p = await modalPrompt('New folder path:', f.path);
     if (p !== null && p.trim() !== f.path) {
-        f.path = p.trim() || 'Root'; f.modified = new Date().toLocaleString(); renderTree();
+        f.path = p.trim() || 'Root'; f.modified = new Date().toISOString(); renderTree();
     }
 }
 async function deleteFile(id) {
@@ -705,21 +746,25 @@ async function deleteFile(id) {
     }
 }
 async function renameFolderPrompt(folderPath) {
-    const oldName  = folderPath.split('/').pop();
-    const newName  = await modalPrompt(`Rename "${oldName}" to:`, oldName);
+    const oldName = folderPath.split('/').pop();
+    const newName = await modalPrompt(`Rename "${oldName}" to:`, oldName);
     if (!newName || newName.trim() === oldName) return;
-    const newPath  = [...folderPath.split('/').slice(0,-1), newName.trim()].join('/');
+    const newPath = [...folderPath.split('/').slice(0,-1), newName.trim()].join('/');
+    // FIX: use prefix-based replacement instead of .replace() which only patches
+    // the first occurrence and corrupts paths like Work/Work/Docs.
     vaultFiles.forEach(f => {
-        if (f.path === folderPath || f.path.startsWith(folderPath + '/')) {
-            f.path = f.path.replace(folderPath, newPath);
-            f.modified = new Date().toLocaleString();
-        }
+        if (f.path === folderPath) {
+            f.path = newPath;
+        } else if (f.path.startsWith(folderPath + '/')) {
+            f.path = newPath + f.path.slice(folderPath.length);
+        } else { return; }
+        f.modified = new Date().toISOString();
     });
     renderTree();
 }
 async function closeVault() {
     if (!await modalConfirm('Close vault and clear all files from memory?', 'Close & Clear', true)) return;
-    vaultFiles = []; resetUI(); renderTree();
+    vaultFiles = []; _clearKeyCache(); resetUI(); renderTree();
     await modalAlert('✅ Vault closed. Memory cleared.');
 }
 
@@ -733,8 +778,8 @@ function isValidFileEntry(entry) {
     if (!Array.isArray(entry.tags)) return false;
     if (typeof entry.content !== 'string') return false;
     if (!ALLOWED_CONTENT_PREFIXES.some(p => entry.content.startsWith(p))) return false;
-    // Guard against absurdly large entries sneaking past the size checks
-    if (entry.content.length > (MAX_FILE_BYTES * 1.5)) return false;
+    // base64 expands 3 bytes → 4 chars, plus a data URI prefix (~100 chars max)
+    if (entry.content.length > Math.ceil(MAX_FILE_BYTES * 4 / 3) + 100) return false;
     return true;
 }
 
@@ -793,7 +838,7 @@ function renderTree() {
             const tag = document.createElement('span'); tag.className = 'tag'; tag.textContent = t; meta.appendChild(tag);
         });
         const ts = document.createElement('span'); ts.className = 'timestamp';
-        ts.textContent = file.modified + (file.size ? ' · ' + formatBytes(file.size) : '');
+        ts.textContent = formatDate(file.modified) + (file.size ? ' · ' + formatBytes(file.size) : '');
         meta.appendChild(ts);
         info.appendChild(link); info.appendChild(meta);
         const actions = document.createElement('div'); actions.className = 'file-actions';
@@ -825,6 +870,7 @@ function renderTree() {
 
             const toggleBtn = document.createElement('button');
             toggleBtn.className = 'folder-toggle';
+            toggleBtn.setAttribute('aria-expanded', 'true');
             toggleBtn.innerHTML = folderIconHTML;
             const folderLabel = document.createElement('span');
             folderLabel.textContent = key;
@@ -850,6 +896,7 @@ function renderTree() {
             toggleBtn.addEventListener('click', () => {
                 const isOpen = children.style.display !== 'none';
                 children.style.display = isOpen ? 'none' : '';
+                toggleBtn.setAttribute('aria-expanded', String(!isOpen));
                 const chevron = toggleBtn.querySelector('.chevron-icon');
                 if (chevron) chevron.classList.toggle('open', !isOpen);
             });
@@ -913,11 +960,17 @@ async function downloadVault() {
             });
         } catch (e) {
             if (e.name === 'AbortError') return; // user cancelled — silent exit
-            throw e;
+            await modalAlert(`❌ Export failed: ${e.message}`);
+            return;
         }
-        const writable = await handle.createWritable();
-        await writable.write(blob);
-        await writable.close();
+        try {
+            const writable = await handle.createWritable();
+            await writable.write(blob);
+            await writable.close();
+            await modalAlert('✅ Vault exported successfully.');
+        } catch (e) {
+            await modalAlert(`❌ Export failed: ${e.message}`);
+        }
     } else {
         // Fallback: classic blob-URL download (browser picks the folder)
         const url = URL.createObjectURL(blob);
@@ -941,9 +994,26 @@ async function loadVault() {
         if (!ok) { document.getElementById('vaultUpload').value = ''; return; }
     }
 
+    // Read the raw bytes — this can fail independently of decryption
+    let arrayBuf;
+    try {
+        arrayBuf = await file.arrayBuffer();
+    } catch {
+        await modalAlert('❌ Could not read the file. It may have been moved or is inaccessible.');
+        document.getElementById('vaultUpload').value = '';
+        return;
+    }
+
+    // Minimum size: MAGIC(4) + SALT(16) + IV(12) + GCM tag(16) = 48 bytes
+    if (arrayBuf.byteLength < MIN_VAULT_BYTES) {
+        await modalAlert('❌ This file is too small to be a valid vault.');
+        document.getElementById('vaultUpload').value = '';
+        return;
+    }
+
     let dec;
     try {
-        dec = await tryDecrypt(pwd, await file.arrayBuffer());
+        dec = await tryDecrypt(pwd, arrayBuf);
     } catch {
         await modalAlert('❌ Wrong password, or this file is corrupted / not a vault.');
         document.getElementById('vaultUpload').value = '';
@@ -981,6 +1051,7 @@ document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden') {
         document.getElementById('password').value = '';
         updateStrength();
+        _clearKeyCache(); // purge cached keys whenever tab is hidden
     }
 });
 
