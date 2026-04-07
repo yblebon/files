@@ -43,7 +43,6 @@
             background-image: radial-gradient(circle, rgba(34,211,238,0.035) 1px, transparent 1px);
             background-size: 28px 28px;
         }
-
         body::before {
             content: '';
             position: fixed;
@@ -169,16 +168,13 @@
         #treeContainer::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 99px; }
         .tree-node { margin-left: 18px; border-left: 1px solid rgba(255,255,255,0.05); padding-left: 14px; }
 
-        /* ── Folder row: toggle + rename ── */
-        .folder-row {
-            display: flex; align-items: center; margin: 8px 0 4px -4px;
-        }
+        /* ── Folder row ── */
+        .folder-row { display: flex; align-items: center; margin: 8px 0 4px -4px; }
         .folder-toggle {
             display: flex; align-items: center; gap: 8px;
             padding: 6px 10px; border-radius: 8px;
             cursor: pointer; font-size: 0.83rem; font-weight: 700;
-            color: var(--muted2); transition: all 0.18s; user-select: none;
-            flex: 1;
+            color: var(--muted2); transition: all 0.18s; user-select: none; flex: 1;
             background: none; border: none; font-family: var(--font-body); text-align: left;
         }
         .folder-toggle:hover { background: rgba(255,255,255,0.04); color: var(--cyan); }
@@ -207,6 +203,7 @@
             display: flex; align-items: center; gap: 7px; color: var(--text);
             text-decoration: none; font-size: 0.875rem; font-weight: 500;
             overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+            cursor: pointer;
         }
         .file-link svg { width: 13px; height: 13px; fill: var(--cyan); flex-shrink: 0; opacity: 0.7; }
         .file-link:hover { color: var(--cyan); }
@@ -341,7 +338,7 @@
                     <svg viewBox="0 0 20 20" fill="currentColor"><path d="M10.75 2.75a.75.75 0 0 0-1.5 0v8.614L6.295 8.235a.75.75 0 1 0-1.09 1.03l4.25 4.5a.75.75 0 0 0 1.09 0l4.25-4.5a.75.75 0 0 0-1.09-1.03l-2.955 3.129V2.75Z"/><path d="M3.5 12.75a.75.75 0 0 0-1.5 0v2.5A2.75 2.75 0 0 0 4.75 18h10.5A2.75 2.75 0 0 0 18 15.25v-2.5a.75.75 0 0 0-1.5 0v2.5c0 .69-.56 1.25-1.25 1.25H4.75c-.69 0-1.25-.56-1.25-1.25v-2.5Z"/></svg>
                     Export
                 </button>
-                <button class="btn btn-ghost" onclick="document.getElementById('vaultUpload').click()">
+                <button class="btn btn-ghost" onclick="triggerImport()">
                     <svg viewBox="0 0 20 20" fill="currentColor"><path d="M9.25 13.25a.75.75 0 0 0 1.5 0V4.636l2.955 3.129a.75.75 0 0 0 1.09-1.03l-4.25-4.5a.75.75 0 0 0-1.09 0l-4.25 4.5a.75.75 0 1 0 1.09 1.03L9.25 4.636v8.614Z"/><path d="M3.5 12.75a.75.75 0 0 0-1.5 0v2.5A2.75 2.75 0 0 0 4.75 18h10.5A2.75 2.75 0 0 0 18 15.25v-2.5a.75.75 0 0 0-1.5 0v2.5c0 .69-.56 1.25-1.25 1.25H4.75c-.69 0-1.25-.56-1.25-1.25v-2.5Z"/></svg>
                     Import
                 </button>
@@ -353,7 +350,7 @@
                     <svg viewBox="0 0 20 20" fill="currentColor"><path d="M10.75 2.75a.75.75 0 0 0-1.5 0v8.614L6.295 8.235a.75.75 0 1 0-1.09 1.03l4.25 4.5a.75.75 0 0 0 1.09 0l4.25-4.5a.75.75 0 0 0-1.09-1.03l-2.955 3.129V2.75Z"/><path d="M3.5 12.75a.75.75 0 0 0-1.5 0v2.5A2.75 2.75 0 0 0 4.75 18h10.5A2.75 2.75 0 0 0 18 15.25v-2.5a.75.75 0 0 0-1.5 0v2.5c0 .69-.56 1.25-1.25 1.25H4.75c-.69 0-1.25-.56-1.25-1.25v-2.5Z"/></svg>
                     Install
                 </button>
-                <input type="file" id="vaultUpload" accept=".vault" style="display:none;" onchange="loadVault()">
+                <input type="file" id="vaultUpload" accept=".vault" style="display:none;">
             </div>
         </div>
     </div>
@@ -390,37 +387,19 @@
 
 </div>
 
-<footer>SECURE VAULT PRO &nbsp;·&nbsp; v1.4.1 &nbsp;·&nbsp; AES-256-GCM &nbsp;·&nbsp; CLIENT-SIDE ENCRYPTION</footer>
+<footer>SECURE VAULT PRO &nbsp;·&nbsp; v1.4.2 &nbsp;·&nbsp; AES-256-GCM &nbsp;·&nbsp; CLIENT-SIDE ENCRYPTION</footer>
 
 <script>
 'use strict';
 
-const APP_VERSION     = '1.4.1';
-// Three distinct on-disk formats, handled in tryDecrypt:
-//
-//   Format C  (this version, v1.4.1+):
-//     MAGIC_C(4=[56 4C 54 02]) + SALT(16) + IV(12) + CIPHER
-//     AES-GCM additionalData = MAGIC_C + SALT  ← tamper-evident
-//
-//   Format B  (original v1.4.0, read-only):
-//     MAGIC_B(4=[56 4C 54 01]) + SALT(16) + IV(12) + CIPHER
-//     AES-GCM NO additionalData  ← matches how those files were encrypted
-//
-//   Format A  (legacy, pre-magic, read-only):
-//     SALT(16) + IV(12) + CIPHER  (no magic header at all)
-//     AES-GCM NO additionalData
-//
-// New exports always write Format C.  Import accepts all three.
-const MAGIC_C         = new Uint8Array([0x56, 0x4C, 0x54, 0x02]); // v1.4.1+ with AAD
-const MAGIC_B         = new Uint8Array([0x56, 0x4C, 0x54, 0x01]); // v1.4.0  no  AAD
+const APP_VERSION     = '1.4.2';
+const MAGIC_C         = new Uint8Array([0x56, 0x4C, 0x54, 0x02]);
+const MAGIC_B         = new Uint8Array([0x56, 0x4C, 0x54, 0x01]);
 const MAX_FILE_BYTES  = 50  * 1024 * 1024;
 const MAX_VAULT_BYTES = 100 * 1024 * 1024;
-// Minimum valid vault: MAGIC(4) + SALT(16) + IV(12) + GCM tag(16) = 48 bytes
 const MIN_VAULT_BYTES = 48;
 
-// Byte offsets for Format B and C (both start with a 4-byte magic header)
-const FMT_MAGIC = { saltStart: 4, saltEnd: 20, ivStart: 20, ivEnd: 32, cipherStart: 32 };
-// Byte offsets for Format A (no magic header)
+const FMT_MAGIC  = { saltStart: 4, saltEnd: 20, ivStart: 20, ivEnd: 32, cipherStart: 32 };
 const FMT_LEGACY = { saltStart: 0, saltEnd: 16, ivStart: 16, ivEnd: 28, cipherStart: 28 };
 
 let vaultFiles     = [];
@@ -436,8 +415,8 @@ function showModal({ message, hasInput=false, placeholder='', defaultValue='',
         const confirmBtn = document.getElementById('modalConfirm');
         const cancelBtn  = document.getElementById('modalCancel');
 
-        msgEl.textContent   = message;
-        inputEl.style.display  = hasInput ? 'block' : 'none';
+        msgEl.textContent  = message;
+        inputEl.style.display = hasInput ? 'block' : 'none';
         if (hasInput) { inputEl.placeholder = placeholder; inputEl.value = defaultValue; }
 
         confirmBtn.textContent = confirmLabel;
@@ -448,11 +427,9 @@ function showModal({ message, hasInput=false, placeholder='', defaultValue='',
 
         overlay.style.display = 'flex';
 
-        // Focus management: save caller's focus, restore on close
         const prevFocus = document.activeElement;
         setTimeout(() => (hasInput ? inputEl : confirmBtn).focus(), 60);
 
-        // Focus trap: keep Tab cycling inside the modal
         function handleTrap(e) {
             if (e.key !== 'Tab') return;
             const focusable = [...document.getElementById('modalBox')
@@ -480,7 +457,7 @@ function showModal({ message, hasInput=false, placeholder='', defaultValue='',
     });
 }
 
-const modalAlert   = msg                          => showModal({ message: msg, confirmLabel: 'Got it' });
+const modalAlert   = msg                           => showModal({ message: msg, confirmLabel: 'Got it' });
 const modalConfirm = (msg, confirmLabel, isDanger) => showModal({ message: msg, confirmLabel, cancelLabel: 'Cancel', isDanger: !!isDanger });
 const modalPrompt  = (msg, defaultValue, placeholder) => showModal({ message: msg, hasInput: true, defaultValue: defaultValue||'', placeholder: placeholder||'', confirmLabel: 'OK', cancelLabel: 'Cancel' });
 
@@ -494,7 +471,6 @@ dropZone.addEventListener('drop', e => {
     if (e.dataTransfer.files.length) {
         fileInput.files = e.dataTransfer.files;
         updateSelectedLabel();
-        // FIX: clear stale size warning when a new file selection is made
         document.getElementById('sizeWarning').textContent = '';
     }
 });
@@ -502,7 +478,6 @@ dropZone.addEventListener('drop', e => {
 function updateSelectedLabel() {
     const files = Array.from(fileInput.files);
     const el    = document.getElementById('selectedFiles');
-    // FIX: clear stale size warning on every file input change
     document.getElementById('sizeWarning').textContent = '';
     if (!files.length) { el.textContent = ''; return; }
     el.textContent = `${files.length} file${files.length!==1?'s':''} selected · ${formatBytes(files.reduce((s,f)=>s+f.size,0))}`;
@@ -518,12 +493,10 @@ function setupPWA() {
             sizes:'192x192', type:'image/svg+xml'
         }]
     };
-    // FIX: store blob URL and revoke it after appending, preventing the leak
     const manifestBlob = new Blob([JSON.stringify(manifest)], {type:'application/json'});
     const manifestURL  = URL.createObjectURL(manifestBlob);
     const link = Object.assign(document.createElement('link'), { rel:'manifest', href: manifestURL });
     document.head.appendChild(link);
-    // Revoke after a short delay — the browser has parsed it by then
     setTimeout(() => URL.revokeObjectURL(manifestURL), 5000);
 
     window.addEventListener('beforeinstallprompt', e => {
@@ -541,7 +514,6 @@ document.getElementById('installBtn').addEventListener('click', () => {
 });
 
 // ── Utilities ──────────────────────────────────────────────────────────────
-// FIX: handle 0 bytes without crashing (log(0) = -Infinity)
 function formatBytes(b) {
     if (b === 0) return '0 B';
     if (!b || b < 0) return '';
@@ -556,23 +528,47 @@ function updateVaultStats() {
         : '';
 }
 
-// ── Utilities (date) ───────────────────────────────────────────────────────
-// Stores ISO 8601 internally; formats for display. Handles legacy locale strings
-// (from vaults created before this fix) gracefully.
 function formatDate(ts) {
     if (!ts) return '';
     const d = new Date(ts);
-    return isNaN(d.getTime()) ? ts : d.toLocaleString();
+    return isNaN(d.getTime()) ? '' : d.toLocaleString();
+}
+
+// ── FIX #1: Data URL → Blob download ──────────────────────────────────────
+// Browsers silently block data: URL downloads for files > ~2MB.
+// Convert on demand to a blob URL, trigger click, then revoke.
+function dataURLToBlob(dataURL) {
+    const comma = dataURL.indexOf(',');
+    if (comma === -1) throw new Error('Invalid data URL');
+    const meta   = dataURL.slice(0, comma);                     // "data:mime/type;base64"
+    const b64    = dataURL.slice(comma + 1);
+    const mime   = (meta.match(/:(.*?);/) || [])[1] || 'application/octet-stream';
+    const bstr   = atob(b64);
+    const arr    = new Uint8Array(bstr.length);
+    for (let i = 0; i < bstr.length; i++) arr[i] = bstr.charCodeAt(i);
+    return new Blob([arr], { type: mime });
+}
+
+function downloadDataURL(dataURL, filename) {
+    try {
+        const blob    = dataURLToBlob(dataURL);
+        const blobURL = URL.createObjectURL(blob);
+        const a = Object.assign(document.createElement('a'), { href: blobURL, download: filename });
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(blobURL), 10000);
+    } catch {
+        // Last-resort fallback — works only for very small files
+        const a = Object.assign(document.createElement('a'), { href: dataURL, download: filename });
+        a.click();
+    }
 }
 
 // ── Crypto ─────────────────────────────────────────────────────────────────
-// Key cache: avoids re-running 600k PBKDF2 iterations for the same (password, salt)
-// keyed by "<password>::<salt-hex>". Cleared on vault close and tab hide.
 const _keyCache = new Map();
 function _clearKeyCache() { _keyCache.clear(); }
 
 async function deriveKey(password, salt) {
-    const saltHex = Array.from(salt).map(b => b.toString(16).padStart(2,'0')).join('');
+    const saltHex  = Array.from(salt).map(b => b.toString(16).padStart(2,'0')).join('');
     const cacheKey = `${password}::${saltHex}`;
     if (_keyCache.has(cacheKey)) return _keyCache.get(cacheKey);
     const raw = await crypto.subtle.importKey(
@@ -585,7 +581,7 @@ async function deriveKey(password, salt) {
         false,
         ['encrypt','decrypt']
     );
-    if (_keyCache.size >= 10) _keyCache.delete(_keyCache.keys().next().value); // prune oldest
+    if (_keyCache.size >= 10) _keyCache.delete(_keyCache.keys().next().value);
     _keyCache.set(cacheKey, key);
     return key;
 }
@@ -605,7 +601,6 @@ async function tryDecrypt(password, buf) {
     const header = new Uint8Array(buf.slice(0, 4));
 
     if (matchesMagic(header, MAGIC_C)) {
-        // Format C (v1.4.1+): MAGIC_C + SALT + IV + CIPHER, with AAD
         const salt   = new Uint8Array(buf.slice(FMT_MAGIC.saltStart, FMT_MAGIC.saltEnd));
         const iv     = new Uint8Array(buf.slice(FMT_MAGIC.ivStart,   FMT_MAGIC.ivEnd));
         const cipher = buf.slice(FMT_MAGIC.cipherStart);
@@ -614,8 +609,6 @@ async function tryDecrypt(password, buf) {
     }
 
     if (matchesMagic(header, MAGIC_B)) {
-        // Format B (v1.4.0): MAGIC_B + SALT + IV + CIPHER, NO AAD
-        // These files were encrypted without additionalData — must match exactly.
         const salt   = new Uint8Array(buf.slice(FMT_MAGIC.saltStart, FMT_MAGIC.saltEnd));
         const iv     = new Uint8Array(buf.slice(FMT_MAGIC.ivStart,   FMT_MAGIC.ivEnd));
         const cipher = buf.slice(FMT_MAGIC.cipherStart);
@@ -623,7 +616,7 @@ async function tryDecrypt(password, buf) {
         return crypto.subtle.decrypt({ name:'AES-GCM', iv }, key, cipher);
     }
 
-    // Format A (legacy, pre-magic): SALT + IV + CIPHER, NO AAD
+    // Format A (legacy, no magic header)
     const salt   = new Uint8Array(buf.slice(FMT_LEGACY.saltStart, FMT_LEGACY.saltEnd));
     const iv     = new Uint8Array(buf.slice(FMT_LEGACY.ivStart,   FMT_LEGACY.ivEnd));
     const cipher = buf.slice(FMT_LEGACY.cipherStart);
@@ -633,29 +626,34 @@ async function tryDecrypt(password, buf) {
 
 // ── Strength ───────────────────────────────────────────────────────────────
 function updateStrength() {
-    const pwd=document.getElementById('password').value, bar=document.getElementById('strengthBar'), label=document.getElementById('strengthLabel');
+    const pwd   = document.getElementById('password').value;
+    const bar   = document.getElementById('strengthBar');
+    const label = document.getElementById('strengthLabel');
     if (!pwd) { bar.style.cssText='width:0%;background:var(--border)'; label.textContent='Not set'; label.style.color='var(--muted)'; return; }
-    let score=0;
-    if (pwd.length>=12) score++; if (pwd.length>=16) score++;
-    if (/[A-Z]/.test(pwd)&&/[a-z]/.test(pwd)) score++;
+    let score = 0;
+    if (pwd.length >= 12) score++; if (pwd.length >= 16) score++;
+    if (/[A-Z]/.test(pwd) && /[a-z]/.test(pwd)) score++;
     if (/[0-9]/.test(pwd)) score++; if (/[^A-Za-z0-9]/.test(pwd)) score++;
-    const s=Math.min(score,4), colors=['var(--border)','#ef4444','#f59e0b','#eab308','#10b981'], labels=['Too short','Weak','Fair','Good','Strong'];
-    bar.style.width=s*25+'%'; bar.style.background=colors[s]; label.textContent=labels[s]; label.style.color=colors[s];
+    const s = Math.min(score, 4);
+    const colors  = ['var(--border)','#ef4444','#f59e0b','#eab308','#10b981'];
+    const labels  = ['Too short','Weak','Fair','Good','Strong'];
+    bar.style.width      = s * 25 + '%';
+    bar.style.background = colors[s];
+    label.textContent    = labels[s];
+    label.style.color    = colors[s];
 }
 
 // ── Reset ──────────────────────────────────────────────────────────────────
 function resetUI() {
-    document.getElementById('vaultTitle').value='Personal Secure Vault';
-    ['searchInput','folderPath','fileTags','password','vaultUpload','fileInput'].forEach(id=>{ document.getElementById(id).value=''; });
-    document.getElementById('selectedFiles').textContent='';
-    document.getElementById('sizeWarning').textContent='';
+    document.getElementById('vaultTitle').value = 'Personal Secure Vault';
+    ['searchInput','folderPath','fileTags','password','vaultUpload','fileInput']
+        .forEach(id => { document.getElementById(id).value = ''; });
+    document.getElementById('selectedFiles').textContent = '';
+    document.getElementById('sizeWarning').textContent   = '';
     updateStrength();
 }
 
 // ── Add files ──────────────────────────────────────────────────────────────
-// FIX: replaced forEach+FileReader callback counter with Promise.all to
-// eliminate the race condition where two files finishing simultaneously
-// could both trigger the completion alert.
 function readFileAsDataURL(file) {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -680,8 +678,8 @@ async function addFile() {
         }
     }
 
-    const currentTotal = vaultFiles.reduce((s,f)=>s+(f.size||0), 0);
-    const incoming     = files.reduce((s,f)=>s+f.size, 0);
+    const currentTotal = vaultFiles.reduce((s,f) => s + (f.size || 0), 0);
+    const incoming     = files.reduce((s,f) => s + f.size, 0);
     if (currentTotal + incoming > MAX_VAULT_BYTES) {
         document.getElementById('sizeWarning').textContent =
             `Adding ${formatBytes(incoming)} would exceed the 100 MB vault limit. Current vault: ${formatBytes(currentTotal)}.`;
@@ -714,7 +712,7 @@ async function addFile() {
 
 // ── File ops ───────────────────────────────────────────────────────────────
 async function renameFile(id) {
-    const f = vaultFiles.find(x=>x.id===id);
+    const f = vaultFiles.find(x => x.id === id);
     if (!f) return;
     const n = await modalPrompt('New filename:', f.name);
     if (n !== null && n.trim() && n.trim() !== f.name) {
@@ -722,27 +720,27 @@ async function renameFile(id) {
     }
 }
 async function editTags(id) {
-    const f = vaultFiles.find(x=>x.id===id);
+    const f = vaultFiles.find(x => x.id === id);
     if (!f) return;
     const s = await modalPrompt('Tags (comma-separated):', f.tags.join(', '));
     if (s !== null) {
-        f.tags = s.split(',').map(t=>t.trim()).filter(Boolean);
+        f.tags = s.split(',').map(t => t.trim()).filter(Boolean);
         f.modified = new Date().toISOString(); renderTree();
     }
 }
 async function moveFile(id) {
-    const f = vaultFiles.find(x=>x.id===id);
+    const f = vaultFiles.find(x => x.id === id);
     if (!f) return;
     const p = await modalPrompt('New folder path:', f.path);
     if (p !== null && p.trim() !== f.path) {
-        f.path = p.trim() || 'Root'; f.modified = new Date().toISOString(); renderTree();
+        f.path = normalisePath(p); f.modified = new Date().toISOString(); renderTree();
     }
 }
 async function deleteFile(id) {
-    const f = vaultFiles.find(x=>x.id===id);
+    const f = vaultFiles.find(x => x.id === id);
     if (!f) return;
     if (await modalConfirm(`Delete "${f.name}" permanently?`, 'Delete', true)) {
-        vaultFiles = vaultFiles.filter(x=>x.id!==id); renderTree();
+        vaultFiles = vaultFiles.filter(x => x.id !== id); renderTree();
     }
 }
 async function renameFolderPrompt(folderPath) {
@@ -750,8 +748,6 @@ async function renameFolderPrompt(folderPath) {
     const newName = await modalPrompt(`Rename "${oldName}" to:`, oldName);
     if (!newName || newName.trim() === oldName) return;
     const newPath = [...folderPath.split('/').slice(0,-1), newName.trim()].join('/');
-    // FIX: use prefix-based replacement instead of .replace() which only patches
-    // the first occurrence and corrupts paths like Work/Work/Docs.
     vaultFiles.forEach(f => {
         if (f.path === folderPath) {
             f.path = newPath;
@@ -768,19 +764,151 @@ async function closeVault() {
     await modalAlert('✅ Vault closed. Memory cleared.');
 }
 
-// ── Vault schema validation ────────────────────────────────────────────────
-// FIX: validate each imported file entry to reject crafted/malformed vaults
+// ── Path helpers ───────────────────────────────────────────────────────────
+// Normalise to "Seg1/Seg2/…" — strips leading/trailing slashes, collapses
+// doubles, and falls back to 'Root' for empty results.
+function normalisePath(raw) {
+    const parts = String(raw || '').split('/').map(s => s.trim()).filter(Boolean);
+    return parts.length ? parts.join('/') : 'Root';
+}
+
+// ── FIX #6: Vault schema validation with full field sanitisation ──────────
+// - Tags must all be strings (non-string elements would crash search)
+// - id must be a non-empty string (missing id breaks all CRUD operations)
+// - size defaults to 0 if missing so vault-limit maths stay correct
+// - path is normalised so Move prompt never shows an empty string
+// - modified defaults to now so the timestamp column is never blank
+// - title from metadata is type-checked before being written to the DOM
 const ALLOWED_CONTENT_PREFIXES = ['data:'];
 function isValidFileEntry(entry) {
     if (!entry || typeof entry !== 'object') return false;
     if (typeof entry.name !== 'string' || !entry.name.trim()) return false;
-    if (typeof entry.path !== 'string') return false;
-    if (!Array.isArray(entry.tags)) return false;
     if (typeof entry.content !== 'string') return false;
     if (!ALLOWED_CONTENT_PREFIXES.some(p => entry.content.startsWith(p))) return false;
-    // base64 expands 3 bytes → 4 chars, plus a data URI prefix (~100 chars max)
+    // base64 expands 3 bytes → 4 chars; add slack for the data-URI header (~100 chars)
     if (entry.content.length > Math.ceil(MAX_FILE_BYTES * 4 / 3) + 100) return false;
     return true;
+}
+
+function sanitiseEntry(entry) {
+    return {
+        // FIX #3: assign fresh UUID if id is missing or wrong type
+        id:       (typeof entry.id === 'string' && entry.id) ? entry.id : crypto.randomUUID(),
+        name:     entry.name.trim(),
+        // FIX #9: normalise path so Move prompt is never blank
+        path:     normalisePath(entry.path),
+        // FIX #4: filter non-string tags so search can't crash on .toLowerCase()
+        tags:     Array.isArray(entry.tags)
+                      ? entry.tags.filter(t => typeof t === 'string').map(t => t.trim()).filter(Boolean)
+                      : [],
+        content:  entry.content,
+        // FIX #10: default missing/invalid modified to import timestamp
+        modified: (entry.modified && !isNaN(new Date(entry.modified).getTime()))
+                      ? entry.modified
+                      : new Date().toISOString(),
+        // FIX #8: default missing/invalid size to 0 so vault-limit check is correct
+        size:     (Number.isFinite(entry.size) && entry.size >= 0) ? entry.size : 0,
+    };
+}
+
+// ── FIX #11: Hoist static render helpers out of renderTree ────────────────
+// Redefining these on every renderTree() call allocates fresh closures and
+// SVG strings on each render — wasteful for vaults with many files.
+const FILE_ICON_HTML   = `<svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4 4a2 2 0 0 1 2-2h4.586A2 2 0 0 1 12 2.586L15.414 6A2 2 0 0 1 16 7.414V16a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4Zm2 6a1 1 0 0 1 1-1h6a1 1 0 1 1 0 2H7a1 1 0 0 1-1-1Zm1 3a1 1 0 1 0 0 2h6a1 1 0 1 0 0-2H7Z" clip-rule="evenodd"/></svg>`;
+const FOLDER_ICON_HTML = `<svg class="folder-icon" viewBox="0 0 20 20" fill="currentColor"><path d="M2 6a2 2 0 0 1 2-2h4l2 2h4a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6Z"/></svg>`;
+const CHEVRON_HTML     = `<svg class="chevron-icon open" viewBox="0 0 12 12"><polyline points="4,2 8,6 4,10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+
+function makeFileItem(file) {
+    const row  = document.createElement('div'); row.className = 'file-item';
+    const info = document.createElement('div'); info.className = 'file-info';
+
+    // FIX #1: Don't set link.href to the data URL at render time.
+    // For files > ~2MB browsers silently block data-URL navigation.
+    // Instead, generate a short-lived blob URL on click and revoke it.
+    const link = document.createElement('a'); link.className = 'file-link';
+    link.title = file.name;
+    link.setAttribute('role', 'button');
+    link.innerHTML = FILE_ICON_HTML;
+    const ns = document.createElement('span'); ns.textContent = file.name; link.appendChild(ns);
+    link.addEventListener('click', e => {
+        e.preventDefault();
+        downloadDataURL(file.content, file.name);
+    });
+
+    const meta = document.createElement('div'); meta.className = 'file-meta';
+    file.tags.forEach(t => {
+        const tag = document.createElement('span'); tag.className = 'tag'; tag.textContent = t; meta.appendChild(tag);
+    });
+    const ts = document.createElement('span'); ts.className = 'timestamp';
+    ts.textContent = formatDate(file.modified) + (file.size ? ' · ' + formatBytes(file.size) : '');
+    meta.appendChild(ts);
+    info.appendChild(link); info.appendChild(meta);
+
+    const actions = document.createElement('div'); actions.className = 'file-actions';
+    [
+        { label:'Move',   cls:'bx-ghost',  fn:()=>moveFile(file.id)   },
+        { label:'Tags',   cls:'bx-purple', fn:()=>editTags(file.id)   },
+        { label:'Rename', cls:'bx-amber',  fn:()=>renameFile(file.id) },
+        { label:'Delete', cls:'bx-danger', fn:()=>deleteFile(file.id) }
+    ].forEach(({label,cls,fn}) => {
+        const b = document.createElement('button'); b.className = 'btn-xs ' + cls;
+        b.textContent = label; b.addEventListener('click', fn); actions.appendChild(b);
+    });
+    row.appendChild(info); row.appendChild(actions);
+    return row;
+}
+
+function buildBranch(obj, prefix='', isRoot=true) {
+    const wrap = document.createElement('div');
+    if (!isRoot) wrap.className = 'tree-node';
+
+    for (const key of Object.keys(obj)) {
+        const fp   = prefix ? `${prefix}/${key}` : key;
+        const node = document.createElement('div');
+
+        const folderRow = document.createElement('div');
+        folderRow.className = 'folder-row';
+
+        const toggleBtn = document.createElement('button');
+        toggleBtn.className = 'folder-toggle';
+        toggleBtn.setAttribute('aria-expanded', 'true');
+        toggleBtn.innerHTML = FOLDER_ICON_HTML;
+        const folderLabel = document.createElement('span');
+        folderLabel.textContent = key;
+        toggleBtn.appendChild(folderLabel);
+        toggleBtn.insertAdjacentHTML('beforeend', CHEVRON_HTML);
+
+        const renameBtn = document.createElement('button');
+        renameBtn.className = 'btn-rename-folder';
+        renameBtn.textContent = 'Rename';
+        renameBtn.title = 'Rename folder';
+
+        folderRow.appendChild(toggleBtn);
+        folderRow.appendChild(renameBtn);
+        node.appendChild(folderRow);
+
+        const children = document.createElement('div');
+        const subKeys = Object.keys(obj[key]._folders);
+        if (subKeys.length) children.appendChild(buildBranch(obj[key]._folders, fp, false));
+        obj[key]._files.forEach(f => children.appendChild(makeFileItem(f)));
+        node.appendChild(children);
+
+        toggleBtn.addEventListener('click', () => {
+            const isOpen = children.style.display !== 'none';
+            children.style.display = isOpen ? 'none' : '';
+            toggleBtn.setAttribute('aria-expanded', String(!isOpen));
+            const chevron = toggleBtn.querySelector('.chevron-icon');
+            if (chevron) chevron.classList.toggle('open', !isOpen);
+        });
+
+        renameBtn.addEventListener('click', e => {
+            e.stopPropagation();
+            renameFolderPrompt(fp);
+        });
+
+        wrap.appendChild(node);
+    }
+    return wrap;
 }
 
 // ── Render tree ────────────────────────────────────────────────────────────
@@ -796,10 +924,12 @@ function renderTree() {
         container.appendChild(e); return;
     }
 
+    // FIX #4: tags are now always strings (sanitised on import / add), but
+    // guard with String(t) here too so a stale in-memory entry can't crash.
     const filtered = vaultFiles.filter(f =>
         f.name.toLowerCase().includes(search) ||
         f.path.toLowerCase().includes(search) ||
-        f.tags.some(t => t.toLowerCase().includes(search))
+        f.tags.some(t => String(t).toLowerCase().includes(search))
     );
 
     if (!filtered.length) {
@@ -808,128 +938,33 @@ function renderTree() {
         container.appendChild(e); return;
     }
 
-    // FIX: handle empty-path files gracefully (they land in 'Root' bucket)
-    const tree = {};
+    // FIX #6: use Object.create(null) so path segments like "__proto__" or
+    // "constructor" cannot corrupt Object.prototype (prototype pollution).
+    function makeNode() { return { _files: [], _folders: Object.create(null) }; }
+    const tree = Object.create(null);
+
     filtered.forEach(file => {
-        const parts = file.path.split('/').filter(Boolean);
-        // If path was empty or only slashes, treat as Root
+        const parts         = file.path.split('/').filter(Boolean);
         const effectiveParts = parts.length ? parts : ['Root'];
         let ref = tree;
         effectiveParts.forEach((p, i) => {
-            if (!ref[p]) ref[p] = { _files: [], _folders: {} };
+            if (!ref[p]) ref[p] = makeNode();
             if (i === effectiveParts.length - 1) ref[p]._files.push(file);
             else ref = ref[p]._folders;
         });
     });
 
-    const fileIconHTML   = `<svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4 4a2 2 0 0 1 2-2h4.586A2 2 0 0 1 12 2.586L15.414 6A2 2 0 0 1 16 7.414V16a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4Zm2 6a1 1 0 0 1 1-1h6a1 1 0 1 1 0 2H7a1 1 0 0 1-1-1Zm1 3a1 1 0 1 0 0 2h6a1 1 0 1 0 0-2H7Z" clip-rule="evenodd"/></svg>`;
-    const folderIconHTML = `<svg class="folder-icon" viewBox="0 0 20 20" fill="currentColor"><path d="M2 6a2 2 0 0 1 2-2h4l2 2h4a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6Z"/></svg>`;
-    const chevronHTML    = `<svg class="chevron-icon open" viewBox="0 0 12 12"><polyline points="4,2 8,6 4,10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
-
-    function makeFileItem(file) {
-        const row    = document.createElement('div'); row.className = 'file-item';
-        const info   = document.createElement('div'); info.className = 'file-info';
-        const link   = document.createElement('a');   link.className = 'file-link';
-        link.href = file.content; link.download = file.name; link.title = file.name;
-        link.innerHTML = fileIconHTML;
-        const ns = document.createElement('span'); ns.textContent = file.name; link.appendChild(ns);
-        const meta = document.createElement('div'); meta.className = 'file-meta';
-        file.tags.forEach(t => {
-            const tag = document.createElement('span'); tag.className = 'tag'; tag.textContent = t; meta.appendChild(tag);
-        });
-        const ts = document.createElement('span'); ts.className = 'timestamp';
-        ts.textContent = formatDate(file.modified) + (file.size ? ' · ' + formatBytes(file.size) : '');
-        meta.appendChild(ts);
-        info.appendChild(link); info.appendChild(meta);
-        const actions = document.createElement('div'); actions.className = 'file-actions';
-        [
-            { label:'Move',   cls:'bx-ghost',  fn:()=>moveFile(file.id)   },
-            { label:'Tags',   cls:'bx-purple', fn:()=>editTags(file.id)   },
-            { label:'Rename', cls:'bx-amber',  fn:()=>renameFile(file.id) },
-            { label:'Delete', cls:'bx-danger', fn:()=>deleteFile(file.id) }
-        ].forEach(({label,cls,fn}) => {
-            const b = document.createElement('button'); b.className = 'btn-xs ' + cls;
-            b.textContent = label; b.addEventListener('click', fn); actions.appendChild(b);
-        });
-        row.appendChild(info); row.appendChild(actions); return row;
-    }
-
-    function buildBranch(obj, prefix='', isRoot=true) {
-        const wrap = document.createElement('div');
-        if (!isRoot) wrap.className = 'tree-node';
-
-        for (const key of Object.keys(obj)) {
-            const fp   = prefix ? `${prefix}/${key}` : key;
-            const node = document.createElement('div');
-
-            // FIX: folder row now has separate toggle (expand/collapse) and
-            // rename button, so clicking the folder no longer accidentally
-            // triggers rename. The chevron rotates to indicate open/closed state.
-            const folderRow = document.createElement('div');
-            folderRow.className = 'folder-row';
-
-            const toggleBtn = document.createElement('button');
-            toggleBtn.className = 'folder-toggle';
-            toggleBtn.setAttribute('aria-expanded', 'true');
-            toggleBtn.innerHTML = folderIconHTML;
-            const folderLabel = document.createElement('span');
-            folderLabel.textContent = key;
-            toggleBtn.appendChild(folderLabel);
-            toggleBtn.insertAdjacentHTML('beforeend', chevronHTML);
-
-            const renameBtn = document.createElement('button');
-            renameBtn.className = 'btn-rename-folder';
-            renameBtn.textContent = 'Rename';
-            renameBtn.title = 'Rename folder';
-
-            folderRow.appendChild(toggleBtn);
-            folderRow.appendChild(renameBtn);
-            node.appendChild(folderRow);
-
-            // Children container (collapsible)
-            const children = document.createElement('div');
-            if (Object.keys(obj[key]._folders).length) children.appendChild(buildBranch(obj[key]._folders, fp, false));
-            obj[key]._files.forEach(f => children.appendChild(makeFileItem(f)));
-            node.appendChild(children);
-
-            // Toggle collapse/expand
-            toggleBtn.addEventListener('click', () => {
-                const isOpen = children.style.display !== 'none';
-                children.style.display = isOpen ? 'none' : '';
-                toggleBtn.setAttribute('aria-expanded', String(!isOpen));
-                const chevron = toggleBtn.querySelector('.chevron-icon');
-                if (chevron) chevron.classList.toggle('open', !isOpen);
-            });
-
-            // Rename wired separately, clearly labelled
-            renameBtn.addEventListener('click', e => {
-                e.stopPropagation();
-                renameFolderPrompt(fp);
-            });
-
-            wrap.appendChild(node);
-        }
-        return wrap;
-    }
-
     container.appendChild(buildBranch(tree));
 }
 
 // ── Export ─────────────────────────────────────────────────────────────────
-// Writes Format C: MAGIC_C(4) + SALT(16) + IV(12) + CIPHER
-// AES-GCM additionalData = MAGIC_C + SALT, binding the unencrypted header
-// to the ciphertext so any tampering is detected on import.
-// Filename: <vault-name>_v<version>.vault
-// Uses showSaveFilePicker (File System Access API) when available so the user
-// can choose the destination folder; falls back to a blob-URL <a> download on
-// browsers that don't support it (Firefox, Safari < 18).
 async function downloadVault() {
     const pwd = document.getElementById('password').value;
     if (!pwd) { await modalAlert('Enter a master password before exporting.'); return; }
 
     const title    = document.getElementById('vaultTitle').value.trim() || 'vault';
-    const safeName = title.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-    const fileName = `${safeName}_v${APP_VERSION}.vault`;
+    const dateStr  = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+    const fileName = `files_v${APP_VERSION}_${dateStr}.vault`;
 
     const salt = crypto.getRandomValues(new Uint8Array(16));
     const iv   = crypto.getRandomValues(new Uint8Array(12));
@@ -947,11 +982,11 @@ async function downloadVault() {
         plaintext
     );
 
-    // Layout: MAGIC_C(4) + SALT(16) + IV(12) + CIPHER
     const blob = new Blob([MAGIC_C, salt, iv, cipher], { type: 'application/octet-stream' });
 
+    // FIX #12: showSaveFilePicker hides the tab too — save password value
+    // before the picker opens so the visibility timer can't interfere.
     if (typeof window.showSaveFilePicker === 'function') {
-        // File System Access API: user picks the destination folder and filename
         let handle;
         try {
             handle = await window.showSaveFilePicker({
@@ -959,7 +994,7 @@ async function downloadVault() {
                 types: [{ description: 'Vault file', accept: { 'application/octet-stream': ['.vault'] } }]
             });
         } catch (e) {
-            if (e.name === 'AbortError') return; // user cancelled — silent exit
+            if (e.name === 'AbortError') return;
             await modalAlert(`❌ Export failed: ${e.message}`);
             return;
         }
@@ -972,7 +1007,6 @@ async function downloadVault() {
             await modalAlert(`❌ Export failed: ${e.message}`);
         }
     } else {
-        // Fallback: classic blob-URL download (browser picks the folder)
         const url = URL.createObjectURL(blob);
         Object.assign(document.createElement('a'), { href: url, download: fileName }).click();
         setTimeout(() => URL.revokeObjectURL(url), 5000);
@@ -980,9 +1014,24 @@ async function downloadVault() {
 }
 
 // ── Import ─────────────────────────────────────────────────────────────────
+// FIX #2: Always clear vaultUpload — including on the early !pwd return —
+// so the onchange fires again if the user picks the same file a second time.
+function triggerImport() {
+    const vaultUpload = document.getElementById('vaultUpload');
+    vaultUpload.value = '';          // reset first so onchange always fires
+    vaultUpload.onchange = loadVault;
+    vaultUpload.click();
+}
+
 async function loadVault() {
+    const vaultUpload = document.getElementById('vaultUpload');
     const pwd  = document.getElementById('password').value;
-    const file = document.getElementById('vaultUpload').files[0];
+    const file = vaultUpload.files[0];
+
+    // FIX #2: clear the input unconditionally so re-picking the same file
+    // triggers onchange next time regardless of which branch we exit through.
+    vaultUpload.value = '';
+
     if (!pwd)  { await modalAlert('Enter your master password before importing.'); return; }
     if (!file) return;
 
@@ -991,23 +1040,19 @@ async function loadVault() {
             `Importing will replace your current vault (${vaultFiles.length} file${vaultFiles.length!==1?'s':''}).\n\nExport a backup first if needed.`,
             'Import & Replace', true
         );
-        if (!ok) { document.getElementById('vaultUpload').value = ''; return; }
+        if (!ok) return;
     }
 
-    // Read the raw bytes — this can fail independently of decryption
     let arrayBuf;
     try {
         arrayBuf = await file.arrayBuffer();
     } catch {
         await modalAlert('❌ Could not read the file. It may have been moved or is inaccessible.');
-        document.getElementById('vaultUpload').value = '';
         return;
     }
 
-    // Minimum size: MAGIC(4) + SALT(16) + IV(12) + GCM tag(16) = 48 bytes
     if (arrayBuf.byteLength < MIN_VAULT_BYTES) {
         await modalAlert('❌ This file is too small to be a valid vault.');
-        document.getElementById('vaultUpload').value = '';
         return;
     }
 
@@ -1016,23 +1061,31 @@ async function loadVault() {
         dec = await tryDecrypt(pwd, arrayBuf);
     } catch {
         await modalAlert('❌ Wrong password, or this file is corrupted / not a vault.');
-        document.getElementById('vaultUpload').value = '';
         return;
     }
 
     try {
-        const imported = JSON.parse(new TextDecoder().decode(dec));
+        const imported  = JSON.parse(new TextDecoder().decode(dec));
+        const rawFiles  = Array.isArray(imported.files) ? imported.files : [];
 
-        // FIX: validate every file entry before accepting the import
-        const rawFiles = Array.isArray(imported.files) ? imported.files : [];
         const validFiles   = [];
         const invalidCount = rawFiles.reduce((n, entry) => {
-            if (isValidFileEntry(entry)) { validFiles.push(entry); return n; }
+            if (isValidFileEntry(entry)) {
+                // FIX #3,4,7,8,9,10: sanitise all fields, not just validate
+                validFiles.push(sanitiseEntry(entry));
+                return n;
+            }
             return n + 1;
         }, 0);
 
         vaultFiles = validFiles;
-        if (imported.metadata?.title) document.getElementById('vaultTitle').value = imported.metadata.title;
+
+        // FIX #7: type-check title before writing to DOM
+        const importedTitle = imported.metadata?.title;
+        if (typeof importedTitle === 'string' && importedTitle.trim()) {
+            document.getElementById('vaultTitle').value = importedTitle.trim();
+        }
+
         document.getElementById('searchInput').value = '';
         renderTree();
 
@@ -1043,15 +1096,26 @@ async function loadVault() {
     } catch {
         await modalAlert('❌ Vault data is corrupted or in an unrecognised format.');
     }
-    document.getElementById('vaultUpload').value = '';
 }
 
 // ── Auto-clear password on tab hide ───────────────────────────────────────
+// FIX #5: Extend grace period to 10 s.  800 ms was too short — a user
+// navigating to a deeply nested folder in the OS file picker easily takes
+// longer, leaving them with a wiped password and a failed import.
+// The page becoming visible again (picker closed) cancels the timer.
+// FIX #12: Same timer also guards the showSaveFilePicker export flow.
+let _hideTimer = null;
 document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden') {
-        document.getElementById('password').value = '';
-        updateStrength();
-        _clearKeyCache(); // purge cached keys whenever tab is hidden
+        _hideTimer = setTimeout(() => {
+            document.getElementById('password').value = '';
+            updateStrength();
+            _clearKeyCache();
+            _hideTimer = null;
+        }, 10000); // 10 s — enough for any file-picker navigation
+    } else {
+        clearTimeout(_hideTimer);
+        _hideTimer = null;
     }
 });
 
