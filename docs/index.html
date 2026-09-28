@@ -147,7 +147,6 @@
         .dz-icon { font-size: 1.6rem; margin-bottom: 7px; }
         .dz-label { font-size: 0.82rem; font-weight: 600; }
         .dz-sub { font-size: 0.72rem; margin-top: 3px; font-family: var(--font-mono); }
-        #selectedFiles { font-size: 0.78rem; color: var(--cyan); font-family: var(--font-mono); margin-top: 8px; min-height: 16px; }
         #sizeWarning { color: #f87171; font-size: 0.78rem; font-family: var(--font-mono); margin-top: 6px; }
 
         /* ── Search ── */
@@ -382,17 +381,10 @@
         <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
             <div class="dz-icon">📂</div>
             <div class="dz-label">Click to browse files</div>
-            <div class="dz-sub">or drag &amp; drop anywhere here</div>
+            <div class="dz-sub">or drag &amp; drop anywhere here — encrypts &amp; stores immediately</div>
             <input type="file" id="fileInput" multiple>
         </div>
-        <div id="selectedFiles"></div>
         <div id="sizeWarning"></div>
-        <div style="margin-top:12px;">
-            <button class="btn btn-primary" onclick="addFile()" style="padding:11px 26px;">
-                <svg viewBox="0 0 20 20" fill="currentColor" style="width:14px;height:14px;"><path d="M10.75 4.75a.75.75 0 0 0-1.5 0v4.5h-4.5a.75.75 0 0 0 0 1.5h4.5v4.5a.75.75 0 0 0 1.5 0v-4.5h4.5a.75.75 0 0 0 0-1.5h-4.5v-4.5Z"/></svg>
-                Encrypt &amp; Store
-            </button>
-        </div>
     </div>
 
     <div class="card">
@@ -482,26 +474,19 @@ const modalPrompt  = (msg, defaultValue, placeholder) => showModal({ message: ms
 const modalPromptPassword = (msg, placeholder) => showModal({ message: msg, hasInput: true, inputType: 'password', placeholder: placeholder||'', confirmLabel: 'Unlock', cancelLabel: 'Cancel' });
 
 // ── Drag & Drop ────────────────────────────────────────────────────────────
+// Selecting or dropping files encrypts & stores them immediately — there's
+// no separate "confirm" step, since a picked file is always meant to go in.
 const dropZone  = document.getElementById('dropZone');
 const fileInput = document.getElementById('fileInput');
-fileInput.addEventListener('change', updateSelectedLabel);
+fileInput.addEventListener('change', () => { if (fileInput.files.length) addFile(); });
 ['dragenter','dragover'].forEach(ev => dropZone.addEventListener(ev, e => { e.preventDefault(); dropZone.classList.add('dragging'); }));
 ['dragleave','drop'].forEach(ev => dropZone.addEventListener(ev, e => { e.preventDefault(); dropZone.classList.remove('dragging'); }));
 dropZone.addEventListener('drop', e => {
     if (e.dataTransfer.files.length) {
         fileInput.files = e.dataTransfer.files;
-        updateSelectedLabel();
-        document.getElementById('sizeWarning').textContent = '';
+        addFile();
     }
 });
-
-function updateSelectedLabel() {
-    const files = Array.from(fileInput.files);
-    const el    = document.getElementById('selectedFiles');
-    document.getElementById('sizeWarning').textContent = '';
-    if (!files.length) { el.textContent = ''; return; }
-    el.textContent = `${files.length} file${files.length!==1?'s':''} selected · ${formatBytes(files.reduce((s,f)=>s+f.size,0))}`;
-}
 
 // ── PWA ────────────────────────────────────────────────────────────────────
 function setupPWA() {
@@ -668,8 +653,7 @@ function resetUI() {
     document.getElementById('vaultTitle').value = 'Personal Secure Vault';
     ['searchInput','folderPath','fileTags','password','vaultUpload','fileInput']
         .forEach(id => { document.getElementById(id).value = ''; });
-    document.getElementById('selectedFiles').textContent = '';
-    document.getElementById('sizeWarning').textContent   = '';
+    document.getElementById('sizeWarning').textContent = '';
     updateStrength();
 }
 
@@ -723,7 +707,6 @@ async function addFile() {
         document.getElementById('searchInput').value = '';
         renderTree();
         fileInput.value = '';
-        updateSelectedLabel();
         await modalAlert(`✅ ${files.length} file${files.length!==1?'s':''} added to "${path}".`);
     } catch (err) {
         await modalAlert(`❌ Error reading files: ${err.message}`);
