@@ -296,7 +296,14 @@
             .btn-row { padding-bottom: 0; }
             #vaultStats { display: none; }
             .col-folder, .col-tags { display: none; }
-            .file-link { max-width: 160px; }
+            .file-table { font-size: 0.78rem; }
+            .file-table td { padding: 10px 4px; }
+            .file-link { max-width: 96px; }
+            .timestamp { font-size: 0.68rem; }
+        }
+
+        @media (max-width: 420px) {
+            .col-modified { display: none; }
         }
     </style>
 </head>
@@ -835,7 +842,7 @@ const TABLE_COLUMNS = [
     { key: 'name',     label: 'Name'   },
     { key: 'path',     label: 'Folder', cls: 'col-folder' },
     { key: null,       label: 'Tags',   cls: 'col-tags'   },
-    { key: 'modified', label: 'Modified' },
+    { key: 'modified', label: 'Modified', cls: 'col-modified' },
     { key: 'size',     label: 'Size'   },
     { key: null,       label: ''       },
 ];
@@ -964,7 +971,7 @@ function makeFileRow(file) {
     tagsTd.appendChild(meta);
 
     // Modified
-    const modTd = document.createElement('td'); modTd.className = 'timestamp';
+    const modTd = document.createElement('td'); modTd.className = 'timestamp col-modified';
     modTd.textContent = formatDate(file.modified);
 
     // Size
