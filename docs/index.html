@@ -406,7 +406,7 @@ let vaultFiles     = [];
 let deferredPrompt = null;
 
 // ── Modal ──────────────────────────────────────────────────────────────────
-function showModal({ message, hasInput=false, placeholder='', defaultValue='',
+function showModal({ message, hasInput=false, inputType='text', placeholder='', defaultValue='',
                      confirmLabel='OK', cancelLabel=null, isDanger=false }) {
     return new Promise(resolve => {
         const overlay    = document.getElementById('modalOverlay');
@@ -417,6 +417,7 @@ function showModal({ message, hasInput=false, placeholder='', defaultValue='',
 
         msgEl.textContent  = message;
         inputEl.style.display = hasInput ? 'block' : 'none';
+        inputEl.type = inputType;
         if (hasInput) { inputEl.placeholder = placeholder; inputEl.value = defaultValue; }
 
         confirmBtn.textContent = confirmLabel;
@@ -460,6 +461,7 @@ function showModal({ message, hasInput=false, placeholder='', defaultValue='',
 const modalAlert   = msg                           => showModal({ message: msg, confirmLabel: 'Got it' });
 const modalConfirm = (msg, confirmLabel, isDanger) => showModal({ message: msg, confirmLabel, cancelLabel: 'Cancel', isDanger: !!isDanger });
 const modalPrompt  = (msg, defaultValue, placeholder) => showModal({ message: msg, hasInput: true, defaultValue: defaultValue||'', placeholder: placeholder||'', confirmLabel: 'OK', cancelLabel: 'Cancel' });
+const modalPromptPassword = (msg, placeholder) => showModal({ message: msg, hasInput: true, inputType: 'password', placeholder: placeholder||'', confirmLabel: 'Unlock', cancelLabel: 'Cancel' });
 
 // ── Drag & Drop ────────────────────────────────────────────────────────────
 const dropZone  = document.getElementById('dropZone');
@@ -1014,8 +1016,11 @@ async function downloadVault() {
 }
 
 // ── Import ─────────────────────────────────────────────────────────────────
-// FIX #2: Always clear vaultUpload — including on the early !pwd return —
-// so the onchange fires again if the user picks the same file a second time.
+// File is picked first; the master password is asked for afterwards via a
+// modal, once we know which vault file we're actually unlocking.
+// FIX #2: Always clear vaultUpload — including on every early return in
+// loadVault() — so the onchange fires again if the user picks the same file
+// a second time.
 function triggerImport() {
     const vaultUpload = document.getElementById('vaultUpload');
     vaultUpload.value = '';          // reset first so onchange always fires
@@ -1025,14 +1030,12 @@ function triggerImport() {
 
 async function loadVault() {
     const vaultUpload = document.getElementById('vaultUpload');
-    const pwd  = document.getElementById('password').value;
     const file = vaultUpload.files[0];
 
     // FIX #2: clear the input unconditionally so re-picking the same file
     // triggers onchange next time regardless of which branch we exit through.
     vaultUpload.value = '';
 
-    if (!pwd)  { await modalAlert('Enter your master password before importing.'); return; }
     if (!file) return;
 
     if (vaultFiles.length > 0) {
@@ -1042,6 +1045,9 @@ async function loadVault() {
         );
         if (!ok) return;
     }
+
+    const pwd = await modalPromptPassword(`Enter the password for "${file.name}":`, 'Master password');
+    if (!pwd) return;
 
     let arrayBuf;
     try {
@@ -1063,6 +1069,9 @@ async function loadVault() {
         await modalAlert('❌ Wrong password, or this file is corrupted / not a vault.');
         return;
     }
+
+    document.getElementById('password').value = pwd;
+    updateStrength();
 
     try {
         const imported  = JSON.parse(new TextDecoder().decode(dec));
