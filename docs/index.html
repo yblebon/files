@@ -402,6 +402,7 @@
 <script>
 'use strict';
 
+const APP             = 'files';
 const APP_VERSION     = '1.4.2';
 const MAGIC_C         = new Uint8Array([0x56, 0x4C, 0x54, 0x02]);
 const MAGIC_B         = new Uint8Array([0x56, 0x4C, 0x54, 0x01]);
@@ -537,6 +538,13 @@ function formatDate(ts) {
     if (!ts) return '';
     const d = new Date(ts);
     return isNaN(d.getTime()) ? '' : d.toLocaleString();
+}
+
+// Mirrors `date -u +%Y%m%dT%H%MZ` — used for the backup filename below.
+function utcTimestamp() {
+    const d   = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    return `${d.getUTCFullYear()}${pad(d.getUTCMonth()+1)}${pad(d.getUTCDate())}T${pad(d.getUTCHours())}${pad(d.getUTCMinutes())}Z`;
 }
 
 // ── FIX #1: Data URL → Blob download ──────────────────────────────────────
@@ -1018,8 +1026,8 @@ async function downloadVault() {
     if (!pwd) { await modalAlert('Enter a master password before exporting.'); return; }
 
     const title    = document.getElementById('vaultTitle').value.trim() || 'vault';
-    const dateStr  = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
-    const fileName = `files_v${APP_VERSION}_${dateStr}.vault`;
+    // Matches: echo "${APP}-${VERSION}-$(date -u +%Y%m%dT%H%MZ)"
+    const fileName = `${APP}-${APP_VERSION}-${utcTimestamp()}.vault`;
 
     const salt = crypto.getRandomValues(new Uint8Array(16));
     const iv   = crypto.getRandomValues(new Uint8Array(12));
