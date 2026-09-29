@@ -3,306 +3,317 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="theme-color" content="#070b14">
+    <meta name="theme-color" content="#0b3d45">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="Files">
     <title>Secure Files</title>
     <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; font-src 'self' data:; img-src data: blob:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none';">
     <style>
         :root {
-            --bg:        #070b14;
-            --bg2:       #0c1220;
-            --bg3:       #111827;
-            --card:      #0f172a;
-            --border:    rgba(255,255,255,0.06);
-            --border2:   rgba(255,255,255,0.12);
-            --cyan:      #22d3ee;
-            --cyan-dim:  rgba(34,211,238,0.12);
-            --cyan-glow: rgba(34,211,238,0.25);
-            --green:     #10b981;
-            --green-dim: rgba(16,185,129,0.12);
-            --amber:     #f59e0b;
-            --red:       #ef4444;
-            --text:      #e2e8f0;
-            --muted:     #64748b;
-            --muted2:    #94a3b8;
-            --font-head: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            --font-body: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            --font-mono: 'SF Mono', 'Cascadia Code', 'Fira Code', ui-monospace, 'Courier New', monospace;
+            --bg:          #faf9f8;
+            --surface:     #ffffff;
+            --row-hover:   #f3f2f1;
+            --border:      #e1dfdd;
+            --border2:     #d2d0ce;
+            --topbar-bg:   #0b3d45;
+            --accent:      #0067b8;
+            --accent-hover:#005a9e;
+            --accent-dim:  rgba(0,103,184,0.08);
+            --accent-dim2: rgba(0,103,184,0.14);
+            --amber:       #ffb900;
+            --amber-dim:   rgba(255,185,0,0.12);
+            --red:         #d13438;
+            --red-dim:     rgba(209,52,56,0.08);
+            --green:       #107c41;
+            --green-dim:   rgba(16,124,65,0.08);
+            --text:        #201f1e;
+            --muted:       #605e5c;
+            --muted2:      #484644;
+            --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
         }
 
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
         body {
-            font-family: var(--font-body);
+            font-family: var(--font);
             background: var(--bg);
             color: var(--text);
             min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            background-image: radial-gradient(circle, rgba(34,211,238,0.035) 1px, transparent 1px);
-            background-size: 28px 28px;
-        }
-        body::before {
-            content: '';
-            position: fixed;
-            top: -200px; left: 50%;
-            transform: translateX(-50%);
-            width: 800px; height: 400px;
-            background: radial-gradient(ellipse, rgba(34,211,238,0.07) 0%, transparent 70%);
-            pointer-events: none;
-            z-index: 0;
         }
 
-        .page { max-width: 920px; margin: 0 auto; padding: 32px 20px 60px; position: relative; z-index: 1; width: 100%; }
+        button, input { font-family: inherit; }
 
-        /* ── Header ── */
-        .vault-topbar { display: flex; align-items: center; gap: 16px; margin-bottom: 36px; }
-        .vault-icon {
-            width: 48px; height: 48px; border-radius: 14px;
-            background: var(--cyan-dim); border: 1px solid rgba(34,211,238,0.2);
+        /* ── App shell ── */
+        .app-shell { display: flex; min-height: 100vh; }
+
+        /* ── Sidebar ── */
+        .sidebar {
+            width: 260px; flex-shrink: 0; background: var(--bg);
+            border-right: 1px solid var(--border);
+            display: flex; flex-direction: column; gap: 18px;
+            padding: 18px 14px; position: relative; z-index: 20;
+        }
+        .brand { display: flex; align-items: center; gap: 10px; padding: 0 2px; }
+        .brand-icon {
+            width: 32px; height: 32px; border-radius: 8px; background: var(--accent-dim);
             display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-            animation: pulse-icon 4s ease-in-out infinite;
         }
-        @keyframes pulse-icon {
-            0%,100% { box-shadow: 0 0 0 0 rgba(34,211,238,0); }
-            50%      { box-shadow: 0 0 24px 4px rgba(34,211,238,0.15); }
-        }
-        .vault-icon svg { width: 22px; height: 22px; fill: var(--cyan); }
-        .vault-name-wrap { flex: 1; }
+        .brand-icon svg { width: 17px; height: 17px; fill: var(--accent); }
+        .brand-text { flex: 1; min-width: 0; }
         #vaultTitle {
-            font-family: var(--font-head); font-size: 1.75rem; font-weight: 800;
-            color: var(--text); background: transparent; border: none; outline: none;
-            width: 100%; padding: 4px 0; border-bottom: 2px solid transparent;
-            transition: border-color 0.25s; letter-spacing: -0.01em;
+            font-size: 0.86rem; font-weight: 700; color: var(--text);
+            background: transparent; border: none; outline: none; width: 100%;
+            padding: 2px 0; border-bottom: 2px solid transparent; transition: border-color 0.2s;
         }
-        #vaultTitle:focus { border-bottom-color: var(--cyan); }
-        .vault-subtitle { font-size: 0.78rem; color: var(--muted); font-family: var(--font-mono); margin-top: 2px; letter-spacing: 0.04em; }
-        #vaultStats { font-size: 0.78rem; color: var(--muted); font-family: var(--font-mono); letter-spacing: 0.04em; white-space: nowrap; }
+        #vaultTitle:focus { border-bottom-color: var(--accent); }
+        .vault-subtitle { font-size: 0.68rem; color: var(--muted); margin-top: 1px; }
 
-        /* ── Card ── */
-        .card {
-            background: var(--card); border: 1px solid var(--border);
-            border-radius: 18px; padding: 22px 24px; margin-bottom: 14px;
-            transition: border-color 0.25s;
+        .btn-upload {
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+            background: var(--accent); color: #fff; border: none; border-radius: 22px;
+            padding: 10px 16px; font-size: 0.86rem; font-weight: 600; cursor: pointer;
+            transition: background 0.15s, box-shadow 0.15s; box-shadow: 0 1px 2px rgba(0,0,0,0.12);
         }
-        .card:hover { border-color: var(--border2); }
-        .card-label {
-            font-size: 0.68rem; font-family: var(--font-mono);
-            text-transform: uppercase; letter-spacing: 0.1em;
-            color: var(--muted); margin-bottom: 14px;
-            display: flex; align-items: center; gap: 8px;
-        }
-        .card-label::before { content: ''; display: block; width: 16px; height: 1px; background: var(--cyan); }
+        .btn-upload:hover { background: var(--accent-hover); }
+        .btn-upload svg { width: 15px; height: 15px; fill: #fff; }
 
-        /* ── Inputs ── */
-        input[type="text"].inp, input[type="password"].inp {
-            width: 100%; background: var(--bg2);
-            border: 1px solid var(--border2); border-radius: 10px;
-            padding: 11px 16px; font-size: 0.9rem; font-family: var(--font-body);
-            color: var(--text); outline: none; transition: border-color 0.2s, box-shadow 0.2s;
+        .upload-panel {
+            border: 1px solid var(--border); border-radius: 10px; padding: 12px;
+            display: flex; flex-direction: column; gap: 8px; background: var(--surface);
         }
-        input[type="text"].inp::placeholder, input[type="password"].inp::placeholder { color: var(--muted); }
-        input[type="text"].inp:focus, input[type="password"].inp:focus {
-            border-color: var(--cyan); box-shadow: 0 0 0 3px var(--cyan-dim);
+        .upload-panel[hidden] { display: none; }
+        .upload-panel input.inp { font-size: 0.82rem; padding: 8px 10px; }
+        .upload-drop {
+            border: 1.5px dashed var(--border2); border-radius: 8px;
+            padding: 14px 8px; text-align: center; color: var(--muted);
+            cursor: pointer; transition: all 0.15s; background: var(--bg);
         }
+        .upload-drop:hover, .upload-drop.dragging { border-color: var(--accent); background: var(--accent-dim); color: var(--accent); }
+        .upload-drop input { display: none; }
+        .ud-icon { font-size: 1.25rem; margin-bottom: 4px; }
+        .ud-label { font-size: 0.76rem; font-weight: 600; }
+        .ud-sub { font-size: 0.66rem; margin-top: 2px; }
+        #sizeWarning { color: var(--red); font-size: 0.72rem; }
 
-        /* ── Password row ── */
-        .pwd-row { display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap; }
-        .pwd-field { flex: 1; min-width: 220px; }
-        .pwd-label { font-size: 0.75rem; color: var(--muted); font-family: var(--font-mono); letter-spacing: 0.06em; margin-bottom: 8px; }
-        .strength-track { height: 3px; background: rgba(255,255,255,0.06); border-radius: 99px; margin-top: 8px; }
-        .strength-fill { height: 100%; border-radius: 99px; transition: width 0.45s cubic-bezier(.4,0,.2,1), background 0.3s; }
-        .strength-info { display: flex; justify-content: flex-start; margin-top: 6px; }
-        .strength-label { font-size: 0.7rem; font-family: var(--font-mono); letter-spacing: 0.05em; }
-
-        /* ── Buttons ── */
-        .btn-row { display: flex; gap: 8px; flex-wrap: wrap; padding-bottom: 22px; }
-        .btn {
-            display: inline-flex; align-items: center; gap: 7px;
-            padding: 10px 18px; border-radius: 10px; border: none;
-            font-size: 0.82rem; font-weight: 600; font-family: var(--font-body);
-            cursor: pointer; transition: all 0.2s; white-space: nowrap; letter-spacing: 0.01em;
+        input.inp {
+            width: 100%; background: var(--surface); border: 1px solid var(--border2);
+            border-radius: 6px; padding: 9px 12px; font-size: 0.86rem; color: var(--text);
+            outline: none; transition: border-color 0.15s, box-shadow 0.15s;
         }
-        .btn svg { width: 14px; height: 14px; flex-shrink: 0; }
-        .btn:active { transform: scale(0.97); }
-        .btn-primary { background: var(--cyan); color: #070b14; }
-        .btn-primary:hover { background: #38e0f7; box-shadow: 0 0 18px rgba(34,211,238,0.35); }
-        .btn-ghost { background: rgba(255,255,255,0.05); border: 1px solid var(--border2); color: var(--muted2); }
-        .btn-ghost:hover { background: rgba(255,255,255,0.09); color: var(--text); border-color: rgba(255,255,255,0.2); }
-        .btn-danger { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.22); color: #f87171; }
-        .btn-danger:hover { background: rgba(239,68,68,0.2); }
-        .btn-success { background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.22); color: #34d399; }
-        .btn-success:hover { background: rgba(16,185,129,0.2); box-shadow: 0 0 14px rgba(16,185,129,0.2); }
+        input.inp::placeholder { color: #a19f9d; }
+        input.inp:focus { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-dim); }
 
-        /* ── Add files ── */
-        .add-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
-        .drop-zone {
-            border: 1.5px dashed rgba(34,211,238,0.18); border-radius: 12px;
-            padding: 20px; text-align: center; color: var(--muted);
-            transition: all 0.2s; cursor: pointer; background: rgba(34,211,238,0.02);
+        /* ── Side nav ── */
+        .side-nav { display: flex; flex-direction: column; gap: 1px; }
+        .nav-item {
+            display: flex; align-items: center; gap: 11px; padding: 9px 10px;
+            border-radius: 6px; border: none; background: none; color: var(--muted2);
+            font-size: 0.86rem; font-weight: 500; cursor: pointer; text-align: left;
+            transition: background 0.12s, color 0.12s; width: 100%;
         }
-        .drop-zone:hover, .drop-zone.dragging { border-color: var(--cyan); background: var(--cyan-dim); color: var(--cyan); }
-        .drop-zone input { display: none; }
-        .dz-icon { font-size: 1.6rem; margin-bottom: 7px; }
-        .dz-label { font-size: 0.82rem; font-weight: 600; }
-        .dz-sub { font-size: 0.72rem; margin-top: 3px; font-family: var(--font-mono); }
-        #sizeWarning { color: #f87171; font-size: 0.78rem; font-family: var(--font-mono); margin-top: 6px; }
+        .nav-item svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.6; flex-shrink: 0; }
+        .nav-item:hover { background: var(--border); }
+        .nav-item.active { background: var(--accent-dim2); color: var(--accent); font-weight: 700; }
+        .nav-item.active svg { fill: var(--accent); stroke: var(--accent); }
+        .nav-count { margin-left: auto; font-size: 0.72rem; color: var(--muted); font-weight: 500; }
 
-        /* ── Search ── */
-        .search-wrap { position: relative; margin-bottom: 16px; }
-        .search-wrap .si { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); width: 15px; height: 15px; fill: var(--muted); pointer-events: none; transition: fill 0.2s; }
-        .search-wrap:focus-within .si { fill: var(--cyan); }
+        .sidebar-footer { margin-top: auto; display: flex; flex-direction: column; gap: 12px; }
+
+        .storage-meter { font-size: 0.7rem; color: var(--muted); padding: 0 2px; }
+        .storage-track { height: 5px; background: var(--border); border-radius: 99px; margin: 6px 0; overflow: hidden; }
+        .storage-fill { height: 100%; background: var(--accent); border-radius: 99px; transition: width 0.3s, background 0.3s; }
+
+        .vault-key-mini { border-top: 1px solid var(--border); padding-top: 12px; display: flex; flex-direction: column; gap: 8px; }
+        .vk-label { font-size: 0.7rem; color: var(--muted); font-weight: 600; }
+        .strength-track { height: 3px; background: var(--border); border-radius: 99px; margin-top: 6px; }
+        .strength-fill { height: 100%; border-radius: 99px; transition: width 0.4s, background 0.3s; }
+        .strength-label { font-size: 0.66rem; color: var(--muted); margin-top: 4px; display: block; }
+
+        .action-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+        .btn-sm {
+            display: flex; align-items: center; justify-content: center; gap: 6px;
+            padding: 7px 8px; border-radius: 6px; border: 1px solid var(--border2);
+            background: var(--surface); color: var(--muted2); font-size: 0.74rem; font-weight: 600;
+            cursor: pointer; transition: all 0.15s; white-space: nowrap;
+        }
+        .btn-sm svg { width: 13px; height: 13px; flex-shrink: 0; }
+        .btn-sm:hover { background: var(--row-hover); color: var(--text); }
+        .btn-sm.danger { color: var(--red); border-color: rgba(209,52,56,0.25); }
+        .btn-sm.danger:hover { background: var(--red-dim); }
+        .btn-sm.success { color: var(--green); border-color: rgba(16,124,65,0.25); }
+        .btn-sm.success:hover { background: var(--green-dim); }
+
+        .sidebar-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.35); z-index: 19; }
+        .sidebar-backdrop.show { display: block; }
+        .menu-toggle { display: none; background: none; border: none; color: #fff; padding: 6px; margin-right: 6px; cursor: pointer; flex-shrink: 0; }
+        .menu-toggle svg { width: 20px; height: 20px; fill: currentColor; }
+
+        /* ── Main ── */
+        .main { flex: 1; min-width: 0; display: flex; flex-direction: column; background: var(--bg); }
+
+        .topbar { background: var(--topbar-bg); padding: 12px 24px; display: flex; align-items: center; flex-shrink: 0; }
+        .search-wrap { position: relative; max-width: 680px; width: 100%; margin: 0 auto; }
+        .search-wrap .si { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); width: 15px; height: 15px; fill: var(--muted); pointer-events: none; }
         #searchInput {
-            width: 100%; background: var(--bg2); border: 1px solid var(--border2); border-radius: 12px;
-            padding: 11px 16px 11px 40px; font-size: 0.9rem; font-family: var(--font-body);
-            color: var(--text); outline: none; transition: border-color 0.2s, box-shadow 0.2s;
+            width: 100%; background: #fff; border: none; border-radius: 20px;
+            padding: 9px 16px 9px 40px; font-size: 0.86rem; color: var(--text);
+            outline: none; box-shadow: 0 1px 2px rgba(0,0,0,0.18);
         }
-        #searchInput::placeholder { color: var(--muted); }
-        #searchInput:focus { border-color: var(--cyan); box-shadow: 0 0 0 3px var(--cyan-dim); }
+        #searchInput::placeholder { color: #8a8886; }
+        #searchInput:focus { box-shadow: 0 0 0 2px rgba(255,255,255,0.55); }
+
+        .content { flex: 1; padding: 22px 28px 40px; overflow: auto; }
+        .content-header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
+        #viewTitle { font-size: 1.35rem; font-weight: 700; color: var(--text); }
+        .main-stats { font-size: 0.8rem; color: var(--muted); white-space: nowrap; }
+
+        /* ── Notice ── */
+        .notice {
+            display: flex; gap: 10px; align-items: flex-start;
+            background: #fff4ce; border: 1px solid #ffd876;
+            border-radius: 8px; padding: 11px 14px; font-size: 0.8rem;
+            color: #6c5300; margin-bottom: 16px; line-height: 1.5;
+        }
+        .notice strong { color: #4d3900; }
+        .notice-icon { font-size: 0.95rem; flex-shrink: 0; margin-top: 1px; }
 
         /* ── File table ── */
-        #treeContainer { max-height: 54vh; overflow: auto; padding-right: 4px; }
-        #treeContainer::-webkit-scrollbar { width: 4px; height: 6px; }
-        #treeContainer::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 99px; }
-
-        .file-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+        #treeContainer { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: auto; }
+        .file-table { width: 100%; border-collapse: collapse; font-size: 0.84rem; }
         .file-table thead th {
-            position: sticky; top: 0; background: var(--card); z-index: 1;
-            text-align: left; font-size: 0.68rem; font-weight: 700;
-            text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted);
-            padding: 8px 12px 10px; border-bottom: 1px solid var(--border2); white-space: nowrap;
+            position: sticky; top: 0; background: var(--surface); z-index: 1;
+            text-align: left; font-size: 0.72rem; font-weight: 600;
+            color: var(--muted); padding: 10px 12px; border-bottom: 1px solid var(--border);
+            white-space: nowrap;
         }
         .file-table thead th.sortable { cursor: pointer; user-select: none; transition: color 0.15s; }
-        .file-table thead th.sortable:hover { color: var(--muted2); }
-        .file-table thead th.sorted { color: var(--cyan); }
+        .file-table thead th.sortable:hover { color: var(--text); }
+        .file-table thead th.sorted { color: var(--accent); }
         .sort-arrow { margin-left: 3px; font-size: 0.65rem; }
-        .file-table tbody tr { border-bottom: 1px solid var(--border); transition: background 0.15s; }
+        .file-table tbody tr { border-bottom: 1px solid var(--border); transition: background 0.12s; }
         .file-table tbody tr:last-child { border-bottom: none; }
-        .file-table tbody tr:hover { background: rgba(255,255,255,0.03); }
-        .file-table td { padding: 10px 12px; vertical-align: middle; }
-        .col-folder, .col-tags { display: table-cell; }
+        .file-table tbody tr:hover { background: var(--row-hover); }
+        .file-table td { padding: 8px 12px; vertical-align: middle; }
+        .col-folder, .col-tags, .col-star { display: table-cell; }
+        .col-star { width: 30px; padding-right: 0; }
+
+        .star-btn { background: none; border: none; cursor: pointer; padding: 4px; display: flex; align-items: center; justify-content: center; border-radius: 5px; }
+        .star-btn:hover { background: var(--border); }
+        .star-btn svg { width: 16px; height: 16px; fill: none; stroke: var(--muted); stroke-width: 1.6; }
+        .star-btn.active svg { fill: var(--amber); stroke: var(--amber); }
 
         .file-link {
-            display: flex; align-items: center; gap: 7px; color: var(--text);
-            text-decoration: none; font-size: 0.875rem; font-weight: 500;
+            display: flex; align-items: center; gap: 8px; color: var(--text);
+            text-decoration: none; font-size: 0.86rem; font-weight: 500;
             overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
             cursor: pointer; max-width: 220px;
         }
-        .file-link svg { width: 13px; height: 13px; fill: var(--cyan); flex-shrink: 0; opacity: 0.7; }
-        .file-link:hover { color: var(--cyan); }
+        .file-link svg { width: 16px; height: 16px; fill: var(--accent); flex-shrink: 0; }
+        .file-link:hover { text-decoration: underline; }
 
         .folder-badge {
             display: inline-flex; align-items: center; gap: 6px;
-            font-family: var(--font-mono); font-size: 0.72rem; color: var(--muted2);
-            background: rgba(255,255,255,0.03); border: 1px solid var(--border2);
-            border-radius: 7px; padding: 4px 9px; cursor: pointer;
-            transition: all 0.18s; max-width: 160px;
+            font-size: 0.76rem; color: var(--muted2);
+            background: var(--bg); border: 1px solid var(--border2);
+            border-radius: 6px; padding: 3px 9px; cursor: pointer;
+            transition: all 0.15s; max-width: 160px;
         }
         .folder-badge svg { width: 12px; height: 12px; fill: var(--amber); flex-shrink: 0; }
         .folder-badge span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .folder-badge:hover { color: var(--cyan); border-color: rgba(34,211,238,0.3); background: var(--cyan-dim); }
+        .folder-badge:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+        .folder-static { font-size: 0.76rem; color: var(--muted); }
 
         .file-meta { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
         .tag {
-            font-size: 0.68rem; font-family: var(--font-mono); padding: 2px 7px; border-radius: 99px;
-            background: rgba(34,211,238,0.08); color: var(--cyan);
-            border: 1px solid rgba(34,211,238,0.15); letter-spacing: 0.03em;
+            font-size: 0.7rem; padding: 2px 8px; border-radius: 99px;
+            background: var(--accent-dim); color: var(--accent);
+            border: 1px solid rgba(0,103,184,0.18);
         }
-        .timestamp { font-size: 0.76rem; font-family: var(--font-mono); color: var(--muted); white-space: nowrap; }
+        .timestamp { font-size: 0.8rem; color: var(--muted); white-space: nowrap; }
 
         .btn-xs {
             display: inline-flex; align-items: center; justify-content: center;
-            padding: 5px 10px; border-radius: 7px; border: none;
-            font-size: 0.72rem; font-weight: 600; font-family: var(--font-body);
-            cursor: pointer; transition: all 0.18s; white-space: nowrap;
+            padding: 5px 9px; border-radius: 6px; border: 1px solid transparent;
+            font-size: 0.74rem; font-weight: 600;
+            cursor: pointer; transition: all 0.15s; white-space: nowrap;
         }
-        .btn-xs:active { transform: scale(0.95); }
-        .bx-ghost  { background: rgba(255,255,255,0.04); border: 1px solid var(--border2); color: var(--muted2); }
-        .bx-ghost:hover { background: rgba(255,255,255,0.08); color: var(--text); }
+        .btn-xs:active { transform: scale(0.96); }
+        .bx-ghost  { background: var(--surface); border-color: var(--border2); color: var(--muted2); }
+        .bx-ghost:hover { background: var(--row-hover); color: var(--text); }
 
         .kebab-btn { padding: 5px 7px; }
         .kebab-btn svg { width: 14px; height: 14px; fill: currentColor; }
 
         /* ── Row actions dropdown ── */
         .actions-menu {
-            position: absolute; background: #0f1a2e; border: 1px solid var(--border2);
-            border-radius: 10px; padding: 6px; min-width: 150px;
-            box-shadow: 0 20px 48px rgba(0,0,0,0.55), 0 0 0 1px rgba(34,211,238,0.05);
+            position: absolute; background: #fff; border: 1px solid var(--border2);
+            border-radius: 8px; padding: 6px; min-width: 170px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.18);
             z-index: 10000; display: flex; flex-direction: column; gap: 1px;
-            animation: modal-in 0.15s cubic-bezier(.34,1.56,.64,1);
+            animation: menu-in 0.12s ease-out;
         }
+        @keyframes menu-in { from { opacity:0; transform:translateY(-4px); } to { opacity:1; transform:none; } }
         .actions-menu-item {
             display: block; width: 100%; text-align: left; background: none; border: none;
-            color: var(--text); font-size: 0.82rem; font-family: var(--font-body);
-            padding: 8px 10px; border-radius: 7px; cursor: pointer; transition: background 0.15s;
+            color: var(--text); font-size: 0.82rem;
+            padding: 8px 10px; border-radius: 5px; cursor: pointer; transition: background 0.12s;
         }
-        .actions-menu-item:hover { background: rgba(255,255,255,0.06); }
-        .actions-menu-item.danger { color: #f87171; }
-        .actions-menu-item.danger:hover { background: rgba(239,68,68,0.12); }
-
-        /* ── Notice ── */
-        .notice {
-            display: flex; gap: 12px; align-items: flex-start;
-            background: rgba(245,158,11,0.05); border: 1px solid rgba(245,158,11,0.14);
-            border-radius: 12px; padding: 13px 16px; font-size: 0.82rem;
-            color: #b8860b; margin-bottom: 14px; line-height: 1.5;
-        }
-        .notice strong { color: #fbbf24; }
-        .notice-icon { font-size: 1rem; flex-shrink: 0; margin-top: 1px; }
+        .actions-menu-item:hover { background: var(--row-hover); }
+        .actions-menu-item.danger { color: var(--red); }
+        .actions-menu-item.danger:hover { background: var(--red-dim); }
 
         /* ── Empty state ── */
-        .empty-state { text-align: center; padding: 56px 20px; color: var(--muted); }
-        .empty-state-icon { font-size: 2.5rem; margin-bottom: 14px; opacity: 0.4; }
+        .empty-state { text-align: center; padding: 60px 20px; color: var(--muted); }
+        .empty-state-icon { font-size: 2.4rem; margin-bottom: 12px; opacity: 0.55; }
         .empty-state-title { font-size: 1rem; font-weight: 600; color: var(--muted2); margin-bottom: 6px; }
-        .empty-state-sub { font-size: 0.82rem; font-family: var(--font-mono); }
-
-        /* ── Footer ── */
-        footer {
-            text-align: center; padding: 24px 0 16px;
-            font-size: 0.7rem; font-family: var(--font-mono);
-            color: var(--muted); letter-spacing: 0.06em;
-            position: relative; z-index: 1;
-        }
+        .empty-state-sub { font-size: 0.82rem; }
 
         /* ── Modal ── */
         #modalOverlay {
             display: none; position: fixed; inset: 0;
-            background: rgba(4,6,12,0.75); backdrop-filter: blur(6px);
+            background: rgba(32,31,30,0.4);
             z-index: 9999; align-items: center; justify-content: center; padding: 20px;
         }
         #modalBox {
-            background: #0f1a2e; border: 1px solid var(--border2); border-radius: 20px;
-            padding: 28px; max-width: 420px; width: 100%;
-            box-shadow: 0 32px 64px rgba(0,0,0,0.6), 0 0 0 1px rgba(34,211,238,0.06);
-            animation: modal-in 0.22s cubic-bezier(.34,1.56,.64,1);
+            background: #fff; border: 1px solid var(--border2); border-radius: 12px;
+            padding: 26px; max-width: 420px; width: 100%;
+            box-shadow: 0 24px 48px rgba(0,0,0,0.24);
+            animation: modal-in 0.18s ease-out;
         }
-        @keyframes modal-in { from { opacity:0; transform:scale(0.94) translateY(8px); } to { opacity:1; transform:none; } }
-        #modalMessage { font-size: 0.92rem; line-height: 1.6; color: var(--text); margin-bottom: 18px; white-space: pre-wrap; }
-        #modalInput {
-            width: 100%; background: var(--bg2); border: 1px solid var(--border2); border-radius: 10px;
-            padding: 11px 16px; font-size: 0.9rem; font-family: var(--font-body);
-            color: var(--text); outline: none; margin-bottom: 18px;
-            transition: border-color 0.2s, box-shadow 0.2s;
-        }
-        #modalInput:focus { border-color: var(--cyan); box-shadow: 0 0 0 3px var(--cyan-dim); }
+        @keyframes modal-in { from { opacity:0; transform:scale(0.96) translateY(6px); } to { opacity:1; transform:none; } }
+        #modalMessage { font-size: 0.92rem; line-height: 1.6; color: var(--text); margin-bottom: 16px; white-space: pre-wrap; }
+        #modalInput { margin-bottom: 16px; }
         #modalActions { display: flex; gap: 8px; justify-content: flex-end; }
+        .btn {
+            display: inline-flex; align-items: center; gap: 7px;
+            padding: 9px 16px; border-radius: 6px; border: none;
+            font-size: 0.82rem; font-weight: 600;
+            cursor: pointer; transition: all 0.15s; white-space: nowrap;
+        }
+        .btn-primary { background: var(--accent); color: #fff; }
+        .btn-primary:hover { background: var(--accent-hover); }
+        .btn-ghost { background: var(--surface); border: 1px solid var(--border2); color: var(--muted2); }
+        .btn-ghost:hover { background: var(--row-hover); color: var(--text); }
+        .btn-danger { background: var(--red); color: #fff; }
+        .btn-danger:hover { background: #a4262c; }
 
-        @media (max-width: 640px) {
-            .page { padding: 20px 14px 50px; }
-            .add-grid { grid-template-columns: 1fr; }
-            .pwd-row { flex-direction: column; }
-            .btn-row { padding-bottom: 0; }
-            #vaultStats { display: none; }
+        @media (max-width: 860px) {
+            .menu-toggle { display: inline-flex; }
+            .sidebar {
+                position: fixed; left: 0; top: 0; bottom: 0; width: 260px;
+                transform: translateX(-100%); transition: transform 0.2s ease; z-index: 20;
+            }
+            .sidebar.open { transform: translateX(0); box-shadow: 0 0 40px rgba(0,0,0,0.25); }
+            .content { padding: 16px; }
             .col-folder, .col-tags { display: none; }
             .file-table { font-size: 0.78rem; }
-            .file-table td { padding: 10px 4px; }
-            .file-link { max-width: 96px; }
-            .timestamp { font-size: 0.68rem; }
+            .file-table td { padding: 8px 6px; }
+            .file-link { max-width: 140px; }
         }
 
-        @media (max-width: 420px) {
+        @media (max-width: 480px) {
             .col-modified { display: none; }
+            .file-link { max-width: 110px; }
         }
     </style>
 </head>
@@ -311,7 +322,7 @@
 <div id="modalOverlay" role="presentation">
     <div id="modalBox" role="dialog" aria-modal="true" aria-labelledby="modalMessage">
         <p id="modalMessage"></p>
-        <input type="text" id="modalInput" style="display:none;" autocomplete="off" spellcheck="false" autocorrect="off">
+        <input type="text" id="modalInput" class="inp" style="display:none;" autocomplete="off" spellcheck="false" autocorrect="off">
         <div id="modalActions">
             <button id="modalCancel" class="btn btn-ghost" style="display:none;"></button>
             <button id="modalConfirm" class="btn btn-primary"></button>
@@ -319,85 +330,123 @@
     </div>
 </div>
 
-<div class="page">
+<div class="sidebar-backdrop" id="sidebarBackdrop"></div>
 
-    <div class="vault-topbar">
-        <div class="vault-icon">
-            <svg viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>
-        </div>
-        <div class="vault-name-wrap">
-            <input type="text" id="vaultTitle" value="Personal Secure Vault" spellcheck="false" autocomplete="off" maxlength="100">
-            <div class="vault-subtitle">Offline · Client-side</div>
-        </div>
-        <div id="vaultStats"></div>
-    </div>
+<div class="app-shell">
 
-    <div class="notice">
-        <span class="notice-icon">⚡</span>
-        <span>Files are decrypted in memory while the vault is open. Encryption is applied on <strong>Export</strong>. Close the vault when done.</span>
-    </div>
-
-    <div class="card">
-        <div class="card-label">Vault Key</div>
-        <div class="pwd-row">
-            <div class="pwd-field">
-                <div class="pwd-label">Master Password</div>
-                <input type="password" id="password" class="inp" placeholder="Enter master password…" autocomplete="current-password" oninput="updateStrength()">
-                <div class="strength-track">
-                    <div class="strength-fill" id="strengthBar" style="width:0%;background:var(--border)"></div>
-                </div>
-                <div class="strength-info">
-                    <span class="strength-label" id="strengthLabel" style="color:var(--muted)">Not set</span>
-                </div>
+    <aside class="sidebar" id="sidebar">
+        <div class="brand">
+            <div class="brand-icon">
+                <svg viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>
             </div>
-            <div class="btn-row">
-                <button class="btn btn-success" onclick="downloadVault()">
-                    <svg viewBox="0 0 20 20" fill="currentColor"><path d="M10.75 2.75a.75.75 0 0 0-1.5 0v8.614L6.295 8.235a.75.75 0 1 0-1.09 1.03l4.25 4.5a.75.75 0 0 0 1.09 0l4.25-4.5a.75.75 0 0 0-1.09-1.03l-2.955 3.129V2.75Z"/><path d="M3.5 12.75a.75.75 0 0 0-1.5 0v2.5A2.75 2.75 0 0 0 4.75 18h10.5A2.75 2.75 0 0 0 18 15.25v-2.5a.75.75 0 0 0-1.5 0v2.5c0 .69-.56 1.25-1.25 1.25H4.75c-.69 0-1.25-.56-1.25-1.25v-2.5Z"/></svg>
-                    Export
-                </button>
-                <button class="btn btn-ghost" onclick="triggerImport()">
-                    <svg viewBox="0 0 20 20" fill="currentColor"><path d="M9.25 13.25a.75.75 0 0 0 1.5 0V4.636l2.955 3.129a.75.75 0 0 0 1.09-1.03l-4.25-4.5a.75.75 0 0 0-1.09 0l-4.25 4.5a.75.75 0 1 0 1.09 1.03L9.25 4.636v8.614Z"/><path d="M3.5 12.75a.75.75 0 0 0-1.5 0v2.5A2.75 2.75 0 0 0 4.75 18h10.5A2.75 2.75 0 0 0 18 15.25v-2.5a.75.75 0 0 0-1.5 0v2.5c0 .69-.56 1.25-1.25 1.25H4.75c-.69 0-1.25-.56-1.25-1.25v-2.5Z"/></svg>
-                    Import
-                </button>
-                <button class="btn btn-danger" onclick="closeVault()">
-                    <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 1a4.5 4.5 0 0 0-4.5 4.5V9H5a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2h-.5V5.5A4.5 4.5 0 0 0 10 1Zm3 8V5.5a3 3 0 1 0-6 0V9h6Z" clip-rule="evenodd"/></svg>
-                    Close
-                </button>
-                <button id="installBtn" class="btn btn-ghost" style="display:none;">
-                    <svg viewBox="0 0 20 20" fill="currentColor"><path d="M10.75 2.75a.75.75 0 0 0-1.5 0v8.614L6.295 8.235a.75.75 0 1 0-1.09 1.03l4.25 4.5a.75.75 0 0 0 1.09 0l4.25-4.5a.75.75 0 0 0-1.09-1.03l-2.955 3.129V2.75Z"/><path d="M3.5 12.75a.75.75 0 0 0-1.5 0v2.5A2.75 2.75 0 0 0 4.75 18h10.5A2.75 2.75 0 0 0 18 15.25v-2.5a.75.75 0 0 0-1.5 0v2.5c0 .69-.56 1.25-1.25 1.25H4.75c-.69 0-1.25-.56-1.25-1.25v-2.5Z"/></svg>
-                    Install
-                </button>
+            <div class="brand-text">
+                <input type="text" id="vaultTitle" value="Personal Secure Vault" spellcheck="false" autocomplete="off" maxlength="100">
+                <div class="vault-subtitle">Offline · Client-side</div>
+            </div>
+        </div>
+
+        <div>
+            <button class="btn-upload" id="addFilesBtn" aria-expanded="false" aria-controls="uploadPanel">
+                <svg viewBox="0 0 20 20" fill="currentColor"><path d="M10.75 4.75a.75.75 0 0 0-1.5 0v4.5h-4.5a.75.75 0 0 0 0 1.5h4.5v4.5a.75.75 0 0 0 1.5 0v-4.5h4.5a.75.75 0 0 0 0-1.5h-4.5v-4.5Z"/></svg>
+                Add files
+            </button>
+            <div class="upload-panel" id="uploadPanel" hidden style="margin-top:8px;">
+                <input type="text" id="folderPath" class="inp" placeholder="Folder path (e.g. Work/2026)">
+                <input type="text" id="fileTags" class="inp" placeholder="Tags (e.g. invoice, pdf)">
+                <div class="upload-drop" id="dropZone" onclick="document.getElementById('fileInput').click()">
+                    <div class="ud-icon">📂</div>
+                    <div class="ud-label">Click to browse</div>
+                    <div class="ud-sub">or drag &amp; drop — encrypts &amp; stores immediately</div>
+                    <input type="file" id="fileInput" multiple>
+                </div>
+                <div id="sizeWarning"></div>
+            </div>
+        </div>
+
+        <nav class="side-nav" id="sideNav">
+            <button class="nav-item active" data-view="files">
+                <svg viewBox="0 0 20 20"><path d="M9.3 1.7a1 1 0 0 1 1.4 0l7 6.7c.2.2.3.4.3.7v8a1 1 0 0 1-1 1h-4.5a.5.5 0 0 1-.5-.5V13a2 2 0 0 0-4 0v4.9a.5.5 0 0 1-.5.5H3a1 1 0 0 1-1-1V9c0-.3.1-.5.3-.7Z"/></svg>
+                Home
+            </button>
+            <button class="nav-item" data-view="files">
+                <svg viewBox="0 0 20 20"><path d="M2 6a2 2 0 0 1 2-2h4l2 2h6a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6Z"/></svg>
+                My files
+            </button>
+            <button class="nav-item" data-view="favorites">
+                <svg viewBox="0 0 20 20"><path d="M10 1.6 12.5 7l6 .8-4.4 4.1 1.2 5.9L10 14.9 4.7 17.8l1.2-5.9L1.5 7.8l6-.8Z"/></svg>
+                Favorites
+                <span class="nav-count" id="favCount"></span>
+            </button>
+            <button class="nav-item" data-view="trash">
+                <svg viewBox="0 0 20 20"><path d="M7 2h6l1 2h4v2H2V4h4Zm-2 5h10l-.8 10.1a2 2 0 0 1-2 1.9H7.8a2 2 0 0 1-2-1.9Z"/></svg>
+                Recycle bin
+                <span class="nav-count" id="trashCount"></span>
+            </button>
+        </nav>
+
+        <div class="sidebar-footer">
+            <div class="storage-meter">
+                <span id="storageLabel">0 B of 100 MB used</span>
+                <div class="storage-track"><div class="storage-fill" id="storageFill" style="width:0%"></div></div>
+            </div>
+
+            <div class="vault-key-mini">
+                <div>
+                    <div class="vk-label">Master password</div>
+                    <input type="password" id="password" class="inp" placeholder="Enter master password…" autocomplete="current-password" oninput="updateStrength()">
+                    <div class="strength-track"><div class="strength-fill" id="strengthBar" style="width:0%;background:var(--border)"></div></div>
+                    <span class="strength-label" id="strengthLabel">Not set</span>
+                </div>
+                <div class="action-grid">
+                    <button class="btn-sm success" onclick="downloadVault()">
+                        <svg viewBox="0 0 20 20" fill="currentColor"><path d="M10.75 2.75a.75.75 0 0 0-1.5 0v8.614L6.295 8.235a.75.75 0 1 0-1.09 1.03l4.25 4.5a.75.75 0 0 0 1.09 0l4.25-4.5a.75.75 0 0 0-1.09-1.03l-2.955 3.129V2.75Z"/><path d="M3.5 12.75a.75.75 0 0 0-1.5 0v2.5A2.75 2.75 0 0 0 4.75 18h10.5A2.75 2.75 0 0 0 18 15.25v-2.5a.75.75 0 0 0-1.5 0v2.5c0 .69-.56 1.25-1.25 1.25H4.75c-.69 0-1.25-.56-1.25-1.25v-2.5Z"/></svg>
+                        Export
+                    </button>
+                    <button class="btn-sm" onclick="triggerImport()">
+                        <svg viewBox="0 0 20 20" fill="currentColor"><path d="M9.25 13.25a.75.75 0 0 0 1.5 0V4.636l2.955 3.129a.75.75 0 0 0 1.09-1.03l-4.25-4.5a.75.75 0 0 0-1.09 0l-4.25 4.5a.75.75 0 1 0 1.09 1.03L9.25 4.636v8.614Z"/><path d="M3.5 12.75a.75.75 0 0 0-1.5 0v2.5A2.75 2.75 0 0 0 4.75 18h10.5A2.75 2.75 0 0 0 18 15.25v-2.5a.75.75 0 0 0-1.5 0v2.5c0 .69-.56 1.25-1.25 1.25H4.75c-.69 0-1.25-.56-1.25-1.25v-2.5Z"/></svg>
+                        Import
+                    </button>
+                    <button class="btn-sm danger" onclick="closeVault()">
+                        <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 1a4.5 4.5 0 0 0-4.5 4.5V9H5a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2h-.5V5.5A4.5 4.5 0 0 0 10 1Zm3 8V5.5a3 3 0 1 0-6 0V9h6Z" clip-rule="evenodd"/></svg>
+                        Close
+                    </button>
+                    <button id="installBtn" class="btn-sm" style="display:none;">
+                        <svg viewBox="0 0 20 20" fill="currentColor"><path d="M10.75 2.75a.75.75 0 0 0-1.5 0v8.614L6.295 8.235a.75.75 0 1 0-1.09 1.03l4.25 4.5a.75.75 0 0 0 1.09 0l4.25-4.5a.75.75 0 0 0-1.09-1.03l-2.955 3.129V2.75Z"/><path d="M3.5 12.75a.75.75 0 0 0-1.5 0v2.5A2.75 2.75 0 0 0 4.75 18h10.5A2.75 2.75 0 0 0 18 15.25v-2.5a.75.75 0 0 0-1.5 0v2.5c0 .69-.56 1.25-1.25 1.25H4.75c-.69 0-1.25-.56-1.25-1.25v-2.5Z"/></svg>
+                        Install
+                    </button>
+                </div>
                 <input type="file" id="vaultUpload" accept=".vault" style="display:none;">
             </div>
         </div>
-    </div>
+    </aside>
 
-    <div class="card">
-        <div class="card-label">Add Files</div>
-        <div class="add-grid">
-            <input type="text" id="folderPath" class="inp" placeholder="Folder path  (e.g. Work/2026)">
-            <input type="text" id="fileTags" class="inp" placeholder="Tags  (e.g. invoice, pdf)">
+    <main class="main">
+        <div class="topbar">
+            <button class="menu-toggle" id="menuToggle" aria-label="Open menu">
+                <svg viewBox="0 0 20 20"><path d="M2 5h16v1.5H2V5Zm0 4.25h16v1.5H2v-1.5ZM2 13.5h16V15H2v-1.5Z"/></svg>
+            </button>
+            <div class="search-wrap">
+                <svg class="si" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M9 3.5a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11ZM2 9a7 7 0 1 1 12.452 4.391l3.328 3.329a.75.75 0 1 1-1.06 1.06l-3.329-3.328A7 7 0 0 1 2 9Z" clip-rule="evenodd"/></svg>
+                <input type="text" id="searchInput" placeholder="Search by name, folder, or tag…" oninput="renderTree()">
+            </div>
         </div>
-        <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
-            <div class="dz-icon">📂</div>
-            <div class="dz-label">Click to browse files</div>
-            <div class="dz-sub">or drag &amp; drop anywhere here — encrypts &amp; stores immediately</div>
-            <input type="file" id="fileInput" multiple>
-        </div>
-        <div id="sizeWarning"></div>
-    </div>
 
-    <div class="card">
-        <div class="search-wrap">
-            <svg class="si" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M9 3.5a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11ZM2 9a7 7 0 1 1 12.452 4.391l3.328 3.329a.75.75 0 1 1-1.06 1.06l-3.329-3.328A7 7 0 0 1 2 9Z" clip-rule="evenodd"/></svg>
-            <input type="text" id="searchInput" placeholder="Search by name, folder, or tag…" oninput="renderTree()">
+        <div class="content">
+            <div class="notice">
+                <span class="notice-icon">⚡</span>
+                <span>Files are decrypted in memory while the vault is open. Encryption is applied on <strong>Export</strong>. Close the vault when done.</span>
+            </div>
+
+            <div class="content-header">
+                <h1 id="viewTitle">My files</h1>
+                <div class="main-stats" id="mainStats"></div>
+            </div>
+
+            <div id="treeContainer"></div>
         </div>
-        <div id="treeContainer"></div>
-    </div>
+    </main>
 
 </div>
-
-<footer>Secure files &nbsp;·&nbsp; v1.4.2 &nbsp;·&nbsp; CLIENT-SIDE ENCRYPTION</footer>
 
 <script>
 'use strict';
@@ -415,6 +464,7 @@ const FMT_LEGACY = { saltStart: 0, saltEnd: 16, ivStart: 16, ivEnd: 28, cipherSt
 
 let vaultFiles     = [];
 let deferredPrompt = null;
+let currentView    = 'files'; // 'files' | 'favorites' | 'trash'
 
 // ── Modal ──────────────────────────────────────────────────────────────────
 function showModal({ message, hasInput=false, inputType='text', placeholder='', defaultValue='',
@@ -474,6 +524,41 @@ const modalConfirm = (msg, confirmLabel, isDanger) => showModal({ message: msg, 
 const modalPrompt  = (msg, defaultValue, placeholder) => showModal({ message: msg, hasInput: true, defaultValue: defaultValue||'', placeholder: placeholder||'', confirmLabel: 'OK', cancelLabel: 'Cancel' });
 const modalPromptPassword = (msg, placeholder) => showModal({ message: msg, hasInput: true, inputType: 'password', placeholder: placeholder||'', confirmLabel: 'Unlock', cancelLabel: 'Cancel' });
 
+// ── Sidebar (mobile drawer + nav + upload panel) ───────────────────────────
+const sidebar         = document.getElementById('sidebar');
+const sidebarBackdrop = document.getElementById('sidebarBackdrop');
+document.getElementById('menuToggle').addEventListener('click', () => openSidebar());
+sidebarBackdrop.addEventListener('click', () => closeSidebar());
+function openSidebar()  { sidebar.classList.add('open'); sidebarBackdrop.classList.add('show'); }
+function closeSidebar() { sidebar.classList.remove('open'); sidebarBackdrop.classList.remove('show'); }
+
+const addFilesBtn = document.getElementById('addFilesBtn');
+const uploadPanel = document.getElementById('uploadPanel');
+addFilesBtn.addEventListener('click', () => {
+    const willOpen = uploadPanel.hidden;
+    uploadPanel.hidden = !willOpen;
+    addFilesBtn.setAttribute('aria-expanded', String(willOpen));
+    if (willOpen) document.getElementById('folderPath').focus();
+});
+
+document.getElementById('sideNav').addEventListener('click', e => {
+    const btn = e.target.closest('.nav-item');
+    if (!btn) return;
+    setView(btn.dataset.view);
+    closeSidebar();
+});
+
+function setView(view) {
+    currentView = view;
+    document.querySelectorAll('.nav-item').forEach(el => el.classList.toggle('active', el.dataset.view === view));
+    const titles = { files: 'My files', favorites: 'Favorites', trash: 'Recycle bin' };
+    document.getElementById('viewTitle').textContent = titles[view] || 'My files';
+    sortKey = view === 'trash' ? 'trashedAt' : 'modified';
+    sortDir = 'desc';
+    document.getElementById('searchInput').value = '';
+    renderTree();
+}
+
 // ── Drag & Drop ────────────────────────────────────────────────────────────
 // Selecting or dropping files encrypts & stores them immediately — there's
 // no separate "confirm" step, since a picked file is always meant to go in.
@@ -493,9 +578,9 @@ dropZone.addEventListener('drop', e => {
 function setupPWA() {
     const manifest = {
         name:'Secure Vault Pro', short_name:'Vault', start_url:'.', display:'standalone',
-        background_color:'#070b14', theme_color:'#070b14',
+        background_color:'#faf9f8', theme_color:'#0b3d45',
         icons:[{
-            src:"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='192' height='192' viewBox='0 0 24 24' fill='%2322d3ee'%3E%3Cpath d='M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z'/%3E%3C/svg%3E",
+            src:"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='192' height='192' viewBox='0 0 24 24' fill='%230067b8'%3E%3Cpath d='M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z'/%3E%3C/svg%3E",
             sizes:'192x192', type:'image/svg+xml'
         }]
     };
@@ -527,11 +612,19 @@ function formatBytes(b) {
     return parseFloat((b/Math.pow(k,i)).toFixed(1))+' '+s[i];
 }
 
-function updateVaultStats() {
+function updateStorageMeter() {
     const total = vaultFiles.reduce((s,f)=>s+(f.size||0),0);
-    document.getElementById('vaultStats').textContent = vaultFiles.length
-        ? `${vaultFiles.length} file${vaultFiles.length!==1?'s':''} · ${formatBytes(total)}`
-        : '';
+    const pct   = Math.min(100, (total / MAX_VAULT_BYTES) * 100);
+    document.getElementById('storageFill').style.width = pct + '%';
+    document.getElementById('storageFill').style.background = pct > 90 ? 'var(--red)' : 'var(--accent)';
+    document.getElementById('storageLabel').textContent = `${formatBytes(total)} of ${formatBytes(MAX_VAULT_BYTES)} used`;
+}
+
+function updateNavCounts() {
+    const favN   = vaultFiles.filter(f => f.favorite && !f.trashed).length;
+    const trashN = vaultFiles.filter(f => f.trashed).length;
+    document.getElementById('favCount').textContent   = favN   ? favN   : '';
+    document.getElementById('trashCount').textContent = trashN ? trashN : '';
 }
 
 function formatDate(ts) {
@@ -648,7 +741,7 @@ function updateStrength() {
     if (/[A-Z]/.test(pwd) && /[a-z]/.test(pwd)) score++;
     if (/[0-9]/.test(pwd)) score++; if (/[^A-Za-z0-9]/.test(pwd)) score++;
     const s = Math.min(score, 4);
-    const colors  = ['var(--border)','#ef4444','#f59e0b','#eab308','#10b981'];
+    const colors  = ['var(--border)','#d13438','#f7630c','#c19c00','#107c41'];
     const labels  = ['Too short','Weak','Fair','Good','Strong'];
     bar.style.width      = s * 25 + '%';
     bar.style.background = colors[s];
@@ -662,6 +755,9 @@ function resetUI() {
     ['searchInput','folderPath','fileTags','password','vaultUpload','fileInput']
         .forEach(id => { document.getElementById(id).value = ''; });
     document.getElementById('sizeWarning').textContent = '';
+    uploadPanel.hidden = true;
+    addFilesBtn.setAttribute('aria-expanded', 'false');
+    setView('files');
     updateStrength();
 }
 
@@ -703,17 +799,19 @@ async function addFile() {
         const now      = new Date().toISOString();
         dataURLs.forEach((content, i) => {
             vaultFiles.push({
-                id:       crypto.randomUUID(),
-                name:     files[i].name,
+                id:        crypto.randomUUID(),
+                name:      files[i].name,
                 path,
-                tags:     [...tags],
+                tags:      [...tags],
                 content,
-                modified: now,
-                size:     files[i].size
+                modified:  now,
+                size:      files[i].size,
+                favorite:  false,
+                trashed:   false,
+                trashedAt: null
             });
         });
-        document.getElementById('searchInput').value = '';
-        renderTree();
+        if (currentView !== 'files') setView('files'); else { document.getElementById('searchInput').value = ''; renderTree(); }
         fileInput.value = '';
         await modalAlert(`✅ ${files.length} file${files.length!==1?'s':''} added to "${path}".`);
     } catch (err) {
@@ -747,10 +845,30 @@ async function moveFile(id) {
         f.path = normalisePath(p); f.modified = new Date().toISOString(); renderTree();
     }
 }
-async function deleteFile(id) {
+function toggleFavorite(id) {
     const f = vaultFiles.find(x => x.id === id);
     if (!f) return;
-    if (await modalConfirm(`Delete "${f.name}" permanently?`, 'Delete', true)) {
+    f.favorite = !f.favorite;
+    renderTree();
+}
+// Soft-delete: files move to the Recycle Bin and can be restored, so this
+// needs no confirmation — unlike the permanent delete below.
+function trashFile(id) {
+    const f = vaultFiles.find(x => x.id === id);
+    if (!f) return;
+    f.trashed = true; f.trashedAt = new Date().toISOString();
+    renderTree();
+}
+function restoreFile(id) {
+    const f = vaultFiles.find(x => x.id === id);
+    if (!f) return;
+    f.trashed = false; f.trashedAt = null; f.modified = new Date().toISOString();
+    renderTree();
+}
+async function deleteForever(id) {
+    const f = vaultFiles.find(x => x.id === id);
+    if (!f) return;
+    if (await modalConfirm(`Permanently delete "${f.name}"? This can't be undone.`, 'Delete forever', true)) {
         vaultFiles = vaultFiles.filter(x => x.id !== id); renderTree();
     }
 }
@@ -804,21 +922,24 @@ function isValidFileEntry(entry) {
 function sanitiseEntry(entry) {
     return {
         // FIX #3: assign fresh UUID if id is missing or wrong type
-        id:       (typeof entry.id === 'string' && entry.id) ? entry.id : crypto.randomUUID(),
-        name:     entry.name.trim(),
+        id:        (typeof entry.id === 'string' && entry.id) ? entry.id : crypto.randomUUID(),
+        name:      entry.name.trim(),
         // FIX #9: normalise path so Move prompt is never blank
-        path:     normalisePath(entry.path),
+        path:      normalisePath(entry.path),
         // FIX #4: filter non-string tags so search can't crash on .toLowerCase()
-        tags:     Array.isArray(entry.tags)
-                      ? entry.tags.filter(t => typeof t === 'string').map(t => t.trim()).filter(Boolean)
-                      : [],
-        content:  entry.content,
+        tags:      Array.isArray(entry.tags)
+                       ? entry.tags.filter(t => typeof t === 'string').map(t => t.trim()).filter(Boolean)
+                       : [],
+        content:   entry.content,
         // FIX #10: default missing/invalid modified to import timestamp
-        modified: (entry.modified && !isNaN(new Date(entry.modified).getTime()))
-                      ? entry.modified
-                      : new Date().toISOString(),
+        modified:  (entry.modified && !isNaN(new Date(entry.modified).getTime()))
+                       ? entry.modified
+                       : new Date().toISOString(),
         // FIX #8: default missing/invalid size to 0 so vault-limit check is correct
-        size:     (Number.isFinite(entry.size) && entry.size >= 0) ? entry.size : 0,
+        size:      (Number.isFinite(entry.size) && entry.size >= 0) ? entry.size : 0,
+        favorite:  entry.favorite === true,
+        trashed:   entry.trashed === true,
+        trashedAt: (entry.trashedAt && !isNaN(new Date(entry.trashedAt).getTime())) ? entry.trashedAt : null,
     };
 }
 
@@ -828,15 +949,21 @@ function sanitiseEntry(entry) {
 const FILE_ICON_HTML   = `<svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4 4a2 2 0 0 1 2-2h4.586A2 2 0 0 1 12 2.586L15.414 6A2 2 0 0 1 16 7.414V16a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4Zm2 6a1 1 0 0 1 1-1h6a1 1 0 1 1 0 2H7a1 1 0 0 1-1-1Zm1 3a1 1 0 1 0 0 2h6a1 1 0 1 0 0-2H7Z" clip-rule="evenodd"/></svg>`;
 const FOLDER_ICON_HTML = `<svg viewBox="0 0 20 20" fill="currentColor"><path d="M2 6a2 2 0 0 1 2-2h4l2 2h4a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6Z"/></svg>`;
 const KEBAB_ICON_HTML   = `<svg viewBox="0 0 20 20"><circle cx="10" cy="4"  r="1.6"/><circle cx="10" cy="10" r="1.6"/><circle cx="10" cy="16" r="1.6"/></svg>`;
+const STAR_ICON_HTML    = `<svg viewBox="0 0 20 20"><path d="M10 1.6 12.5 7l6 .8-4.4 4.1 1.2 5.9L10 14.9 4.7 17.8l1.2-5.9L1.5 7.8l6-.8Z"/></svg>`;
 
-const TABLE_COLUMNS = [
-    { key: 'name',     label: 'Name'   },
-    { key: 'path',     label: 'Folder', cls: 'col-folder' },
-    { key: null,       label: 'Tags',   cls: 'col-tags'   },
-    { key: 'modified', label: 'Modified', cls: 'col-modified' },
-    { key: 'size',     label: 'Size'   },
-    { key: null,       label: ''       },
-];
+function getTableColumns() {
+    const cols = [];
+    if (currentView !== 'trash') cols.push({ key: null, label: '', cls: 'col-star' });
+    cols.push({ key: 'name', label: 'Name' });
+    cols.push({ key: 'path', label: 'Folder', cls: 'col-folder' });
+    cols.push({ key: null,   label: 'Tags',   cls: 'col-tags' });
+    cols.push(currentView === 'trash'
+        ? { key: 'trashedAt', label: 'Deleted',  cls: 'col-modified' }
+        : { key: 'modified',  label: 'Modified', cls: 'col-modified' });
+    cols.push({ key: 'size', label: 'Size' });
+    cols.push({ key: null,   label: '' });
+    return cols;
+}
 
 let sortKey = 'modified';
 let sortDir = 'desc';
@@ -850,8 +977,9 @@ function setSort(key) {
 function compareFiles(a, b) {
     let av, bv;
     if (sortKey === 'size') { av = a.size || 0; bv = b.size || 0; }
-    else if (sortKey === 'modified') { av = new Date(a.modified).getTime() || 0; bv = new Date(b.modified).getTime() || 0; }
-    else { av = String(a[sortKey] || '').toLowerCase(); bv = String(b[sortKey] || '').toLowerCase(); }
+    else if (sortKey === 'modified' || sortKey === 'trashedAt') {
+        av = new Date(a[sortKey]).getTime() || 0; bv = new Date(b[sortKey]).getTime() || 0;
+    } else { av = String(a[sortKey] || '').toLowerCase(); bv = String(b[sortKey] || '').toLowerCase(); }
     if (av < bv) return sortDir === 'asc' ? -1 : 1;
     if (av > bv) return sortDir === 'asc' ? 1 : -1;
     return 0;
@@ -873,12 +1001,21 @@ function openActionsMenu(anchorBtn, file) {
     closeOpenMenu();
     const menu = document.createElement('div');
     menu.className = 'actions-menu';
-    [
-        { label: 'Move',      fn: () => moveFile(file.id)   },
-        { label: 'Edit tags', fn: () => editTags(file.id)   },
-        { label: 'Rename',    fn: () => renameFile(file.id) },
-        { label: 'Delete',    fn: () => deleteFile(file.id), danger: true },
-    ].forEach(({ label, fn, danger }) => {
+
+    const items = currentView === 'trash'
+        ? [
+            { label: 'Restore',            fn: () => restoreFile(file.id) },
+            { label: 'Delete permanently', fn: () => deleteForever(file.id), danger: true },
+          ]
+        : [
+            { label: 'Move',      fn: () => moveFile(file.id)   },
+            { label: 'Edit tags', fn: () => editTags(file.id)   },
+            { label: 'Rename',    fn: () => renameFile(file.id) },
+            { label: file.favorite ? 'Remove from favorites' : 'Add to favorites', fn: () => toggleFavorite(file.id) },
+            { label: 'Delete',    fn: () => trashFile(file.id), danger: true },
+          ];
+
+    items.forEach(({ label, fn, danger }) => {
         const item = document.createElement('button');
         item.className = 'actions-menu-item' + (danger ? ' danger' : '');
         item.textContent = label;
@@ -902,7 +1039,7 @@ function openActionsMenu(anchorBtn, file) {
 function buildTableHead() {
     const thead = document.createElement('thead');
     const tr    = document.createElement('tr');
-    TABLE_COLUMNS.forEach(col => {
+    getTableColumns().forEach(col => {
         const th = document.createElement('th');
         if (col.cls) th.classList.add(col.cls);
         if (col.key) {
@@ -928,6 +1065,17 @@ function buildTableHead() {
 function makeFileRow(file) {
     const tr = document.createElement('tr');
 
+    if (currentView !== 'trash') {
+        const starTd = document.createElement('td'); starTd.className = 'col-star';
+        const starBtn = document.createElement('button');
+        starBtn.className = 'star-btn' + (file.favorite ? ' active' : '');
+        starBtn.title = file.favorite ? 'Remove from favorites' : 'Add to favorites';
+        starBtn.innerHTML = STAR_ICON_HTML;
+        starBtn.addEventListener('click', () => toggleFavorite(file.id));
+        starTd.appendChild(starBtn);
+        tr.appendChild(starTd);
+    }
+
     // Name — FIX #1: don't set link.href to the data URL at render time.
     // For files > ~2MB browsers silently block data-URL navigation.
     // Instead, generate a short-lived blob URL on click and revoke it.
@@ -941,15 +1089,24 @@ function makeFileRow(file) {
     nameTd.appendChild(link);
 
     // Folder — clicking it renames every file sharing this folder path.
+    // Disabled from the Recycle Bin, since it would silently touch
+    // non-trashed files sharing the same path.
     const folderTd = document.createElement('td'); folderTd.className = 'col-folder';
-    const folderBtn = document.createElement('button');
-    folderBtn.className = 'folder-badge';
-    folderBtn.title = `Rename the "${file.path}" folder`;
-    folderBtn.innerHTML = FOLDER_ICON_HTML;
-    const folderLabel = document.createElement('span'); folderLabel.textContent = file.path;
-    folderBtn.appendChild(folderLabel);
-    folderBtn.addEventListener('click', () => renameFolderPrompt(file.path));
-    folderTd.appendChild(folderBtn);
+    if (currentView === 'trash') {
+        const staticLabel = document.createElement('span');
+        staticLabel.className = 'folder-static';
+        staticLabel.textContent = file.path;
+        folderTd.appendChild(staticLabel);
+    } else {
+        const folderBtn = document.createElement('button');
+        folderBtn.className = 'folder-badge';
+        folderBtn.title = `Rename the "${file.path}" folder`;
+        folderBtn.innerHTML = FOLDER_ICON_HTML;
+        const folderLabel = document.createElement('span'); folderLabel.textContent = file.path;
+        folderBtn.appendChild(folderLabel);
+        folderBtn.addEventListener('click', () => renameFolderPrompt(file.path));
+        folderTd.appendChild(folderBtn);
+    }
 
     // Tags
     const tagsTd = document.createElement('td'); tagsTd.className = 'col-tags';
@@ -961,9 +1118,9 @@ function makeFileRow(file) {
     });
     tagsTd.appendChild(meta);
 
-    // Modified
+    // Modified / Deleted
     const modTd = document.createElement('td'); modTd.className = 'timestamp col-modified';
-    modTd.textContent = formatDate(file.modified);
+    modTd.textContent = formatDate(currentView === 'trash' ? file.trashedAt : file.modified);
 
     // Size
     const sizeTd = document.createElement('td'); sizeTd.className = 'timestamp';
@@ -983,25 +1140,45 @@ function makeFileRow(file) {
     return tr;
 }
 
+function getViewFiles() {
+    if (currentView === 'trash')     return vaultFiles.filter(f => f.trashed);
+    if (currentView === 'favorites') return vaultFiles.filter(f => f.favorite && !f.trashed);
+    return vaultFiles.filter(f => !f.trashed);
+}
+
+const EMPTY_STATES = {
+    files:     { icon: '🗄️', title: 'This vault is empty',   sub: 'Use "Add files" in the sidebar, or import an existing vault' },
+    favorites: { icon: '⭐',  title: 'No favorites yet',       sub: 'Star a file to see it here' },
+    trash:     { icon: '🗑️', title: 'Recycle bin is empty',   sub: 'Deleted files show up here and can be restored' },
+};
+
 // ── Render file table ──────────────────────────────────────────────────────
 function renderTree() {
     const container = document.getElementById('treeContainer');
     const search    = document.getElementById('searchInput').value.toLowerCase().trim();
     closeOpenMenu();
     container.innerHTML = '';
-    updateVaultStats();
+    updateStorageMeter();
+    updateNavCounts();
 
-    if (!vaultFiles.length) {
+    const viewFiles = getViewFiles();
+
+    if (!viewFiles.length) {
+        const state = EMPTY_STATES[currentView] || EMPTY_STATES.files;
         const e = document.createElement('div'); e.className = 'empty-state';
-        e.innerHTML = '<div class="empty-state-icon">🗄️</div><div class="empty-state-title">Vault is empty</div><div class="empty-state-sub">Add files above or import an existing vault</div>';
-        container.appendChild(e); return;
+        e.innerHTML = `<div class="empty-state-icon">${state.icon}</div><div class="empty-state-title">${state.title}</div><div class="empty-state-sub">${state.sub}</div>`;
+        container.appendChild(e);
+        document.getElementById('mainStats').textContent = '';
+        return;
     }
 
-    const filtered = vaultFiles.filter(f =>
+    const filtered = viewFiles.filter(f =>
         f.name.toLowerCase().includes(search) ||
         f.path.toLowerCase().includes(search) ||
         f.tags.some(t => String(t).toLowerCase().includes(search))
     );
+
+    document.getElementById('mainStats').textContent = `${filtered.length} item${filtered.length!==1?'s':''}`;
 
     if (!filtered.length) {
         const e = document.createElement('div'); e.className = 'empty-state';
@@ -1156,8 +1333,7 @@ async function loadVault() {
             document.getElementById('vaultTitle').value = importedTitle.trim();
         }
 
-        document.getElementById('searchInput').value = '';
-        renderTree();
+        setView('files');
 
         const warn = invalidCount > 0
             ? `\n⚠️ ${invalidCount} malformed entr${invalidCount!==1?'ies':'y'} were skipped.`
