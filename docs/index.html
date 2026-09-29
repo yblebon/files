@@ -46,6 +46,38 @@
         /* ── App shell ── */
         .app-shell { display: flex; min-height: 100vh; }
 
+        /* ── Landing (locked) screen ── */
+        .landing { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
+        .landing-card {
+            max-width: 420px; width: 100%; background: var(--surface); border: 1px solid var(--border);
+            border-radius: 16px; padding: 34px 30px; box-shadow: 0 12px 40px rgba(0,0,0,0.08); text-align: center;
+        }
+        .landing-icon {
+            width: 56px; height: 56px; border-radius: 14px; background: var(--accent-dim);
+            display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;
+        }
+        .landing-icon svg { width: 28px; height: 28px; fill: var(--accent); }
+        .landing-title { font-size: 1.3rem; font-weight: 700; color: var(--text); }
+        .landing-sub { font-size: 0.85rem; color: var(--muted); margin: 6px 0 26px; line-height: 1.5; }
+        .landing-actions { display: flex; flex-direction: column; gap: 10px; text-align: left; }
+        .landing-btn {
+            display: flex; align-items: center; gap: 14px; padding: 12px 14px; border-radius: 10px;
+            border: 1px solid var(--border2); background: var(--surface); cursor: pointer;
+            transition: all 0.15s; width: 100%; text-align: left;
+        }
+        .landing-btn:hover:not(:disabled) { border-color: var(--accent); background: var(--accent-dim); }
+        .landing-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .landing-btn-icon {
+            width: 34px; height: 34px; border-radius: 8px; background: var(--bg);
+            display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+        }
+        .landing-btn-icon svg { width: 16px; height: 16px; fill: var(--muted2); }
+        .landing-btn.primary .landing-btn-icon { background: var(--accent); }
+        .landing-btn.primary .landing-btn-icon svg { fill: #fff; }
+        .landing-btn-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+        .landing-btn-title { font-size: 0.9rem; font-weight: 700; color: var(--text); }
+        .landing-btn-sub { font-size: 0.74rem; color: var(--muted); }
+
         /* ── Sidebar ── */
         .sidebar {
             width: 260px; flex-shrink: 0; background: var(--bg);
@@ -330,9 +362,48 @@
     </div>
 </div>
 
+<div class="landing" id="landing">
+    <div class="landing-card">
+        <div class="landing-icon">
+            <svg viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>
+        </div>
+        <div class="landing-title">Secure Files</div>
+        <div class="landing-sub">A client-side encrypted file vault. Nothing ever leaves your browser unencrypted.</div>
+        <div class="landing-actions">
+            <button class="landing-btn primary" id="unlockVaultBtn" onclick="unlockVaultFlow()" disabled>
+                <div class="landing-btn-icon">
+                    <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 1a4.5 4.5 0 0 0-4.5 4.5V9H5a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2h-4V5.5A2.5 2.5 0 0 1 10 3a2.5 2.5 0 0 1 2.5 2.5.75.75 0 0 0 1.5 0A4.5 4.5 0 0 0 10 1Z" clip-rule="evenodd"/></svg>
+                </div>
+                <div class="landing-btn-text">
+                    <span class="landing-btn-title">Unlock Vault</span>
+                    <span class="landing-btn-sub" id="unlockVaultSub">Checking this device…</span>
+                </div>
+            </button>
+            <button class="landing-btn" onclick="startNewVault()">
+                <div class="landing-btn-icon">
+                    <svg viewBox="0 0 20 20" fill="currentColor"><path d="M10.75 4.75a.75.75 0 0 0-1.5 0v4.5h-4.5a.75.75 0 0 0 0 1.5h4.5v4.5a.75.75 0 0 0 1.5 0v-4.5h4.5a.75.75 0 0 0 0-1.5h-4.5v-4.5Z"/></svg>
+                </div>
+                <div class="landing-btn-text">
+                    <span class="landing-btn-title">New Vault</span>
+                    <span class="landing-btn-sub">Start a fresh, empty vault protected by a master password</span>
+                </div>
+            </button>
+            <button class="landing-btn" onclick="triggerImport()">
+                <div class="landing-btn-icon">
+                    <svg viewBox="0 0 20 20" fill="currentColor"><path d="M9.25 13.25a.75.75 0 0 0 1.5 0V4.636l2.955 3.129a.75.75 0 0 0 1.09-1.03l-4.25-4.5a.75.75 0 0 0-1.09 0l-4.25 4.5a.75.75 0 1 0 1.09 1.03L9.25 4.636v8.614Z"/><path d="M3.5 12.75a.75.75 0 0 0-1.5 0v2.5A2.75 2.75 0 0 0 4.75 18h10.5A2.75 2.75 0 0 0 18 15.25v-2.5a.75.75 0 0 0-1.5 0v2.5c0 .69-.56 1.25-1.25 1.25H4.75c-.69 0-1.25-.56-1.25-1.25v-2.5Z"/></svg>
+                </div>
+                <div class="landing-btn-text">
+                    <span class="landing-btn-title">Restore Vault</span>
+                    <span class="landing-btn-sub">Import a previously exported .vault backup file</span>
+                </div>
+            </button>
+        </div>
+    </div>
+</div>
+
 <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
 
-<div class="app-shell">
+<div class="app-shell" id="appShell" style="display:none;">
 
     <aside class="sidebar" id="sidebar">
         <div class="brand">
@@ -406,9 +477,9 @@
                         <svg viewBox="0 0 20 20" fill="currentColor"><path d="M9.25 13.25a.75.75 0 0 0 1.5 0V4.636l2.955 3.129a.75.75 0 0 0 1.09-1.03l-4.25-4.5a.75.75 0 0 0-1.09 0l-4.25 4.5a.75.75 0 1 0 1.09 1.03L9.25 4.636v8.614Z"/><path d="M3.5 12.75a.75.75 0 0 0-1.5 0v2.5A2.75 2.75 0 0 0 4.75 18h10.5A2.75 2.75 0 0 0 18 15.25v-2.5a.75.75 0 0 0-1.5 0v2.5c0 .69-.56 1.25-1.25 1.25H4.75c-.69 0-1.25-.56-1.25-1.25v-2.5Z"/></svg>
                         Import
                     </button>
-                    <button class="btn-sm danger" onclick="closeVault()">
+                    <button class="btn-sm danger" onclick="lockVault()">
                         <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 1a4.5 4.5 0 0 0-4.5 4.5V9H5a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2h-.5V5.5A4.5 4.5 0 0 0 10 1Zm3 8V5.5a3 3 0 1 0-6 0V9h6Z" clip-rule="evenodd"/></svg>
-                        Close
+                        Lock
                     </button>
                     <button id="installBtn" class="btn-sm" style="display:none;">
                         <svg viewBox="0 0 20 20" fill="currentColor"><path d="M10.75 2.75a.75.75 0 0 0-1.5 0v8.614L6.295 8.235a.75.75 0 1 0-1.09 1.03l4.25 4.5a.75.75 0 0 0 1.09 0l4.25-4.5a.75.75 0 0 0-1.09-1.03l-2.955 3.129V2.75Z"/><path d="M3.5 12.75a.75.75 0 0 0-1.5 0v2.5A2.75 2.75 0 0 0 4.75 18h10.5A2.75 2.75 0 0 0 18 15.25v-2.5a.75.75 0 0 0-1.5 0v2.5c0 .69-.56 1.25-1.25 1.25H4.75c-.69 0-1.25-.56-1.25-1.25v-2.5Z"/></svg>
@@ -434,7 +505,7 @@
         <div class="content">
             <div class="notice">
                 <span class="notice-icon">⚡</span>
-                <span>Files are decrypted in memory while the vault is open. Encryption is applied on <strong>Export</strong>. Close the vault when done.</span>
+                <span>Files are decrypted in memory while unlocked, and auto-saved to this device encrypted after every change. <strong>Export</strong> creates a portable backup file. Lock the vault when done.</span>
             </div>
 
             <div class="content-header">
@@ -462,9 +533,50 @@ const MIN_VAULT_BYTES = 48;
 const FMT_MAGIC  = { saltStart: 4, saltEnd: 20, ivStart: 20, ivEnd: 32, cipherStart: 32 };
 const FMT_LEGACY = { saltStart: 0, saltEnd: 16, ivStart: 16, ivEnd: 28, cipherStart: 28 };
 
-let vaultFiles     = [];
-let deferredPrompt = null;
-let currentView    = 'files'; // 'files' | 'favorites' | 'trash'
+let vaultFiles      = [];
+let deferredPrompt  = null;
+let currentView     = 'files'; // 'files' | 'favorites' | 'trash'
+let vaultUnlocked   = false;
+let activeSalt      = null;    // Uint8Array — the salt of the vault currently unlocked
+let activePassword  = null;    // used only for local auto-save; decoupled from the
+                                // visible #password field so retyping it to export
+                                // under a different password can't corrupt auto-save
+
+// ── Local device storage (IndexedDB) ────────────────────────────────────────
+// Holds one encrypted blob (same on-disk format as an exported .vault file),
+// auto-saved after every change, so "Unlock Vault" doesn't require re-picking
+// a backup file each visit. localStorage isn't used here since its ~5-10MB
+// quota can't hold vaults up to MAX_VAULT_BYTES.
+const IDB_NAME   = 'secureVaultDB';
+const IDB_STORE  = 'vault';
+const IDB_KEY    = 'current';
+
+function openDB() {
+    return new Promise((resolve, reject) => {
+        const req = indexedDB.open(IDB_NAME, 1);
+        req.onupgradeneeded = () => req.result.createObjectStore(IDB_STORE);
+        req.onsuccess = () => resolve(req.result);
+        req.onerror   = () => reject(req.error);
+    });
+}
+async function idbGet(key) {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+        const tx  = db.transaction(IDB_STORE, 'readonly');
+        const req = tx.objectStore(IDB_STORE).get(key);
+        req.onsuccess = () => resolve(req.result);
+        req.onerror   = () => reject(req.error);
+    });
+}
+async function idbSet(key, value) {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(IDB_STORE, 'readwrite');
+        tx.objectStore(IDB_STORE).put(value, key);
+        tx.oncomplete = () => resolve();
+        tx.onerror    = () => reject(tx.error);
+    });
+}
 
 // ── Modal ──────────────────────────────────────────────────────────────────
 function showModal({ message, hasInput=false, inputType='text', placeholder='', defaultValue='',
@@ -703,6 +815,8 @@ function matchesMagic(header, magic) {
     return header.length >= 4 && magic.every((b, i) => b === header[i]);
 }
 
+// Returns { plaintext, salt } — the salt is handed back so callers can keep
+// reusing it for local auto-save (see activeSalt) without re-parsing the blob.
 async function tryDecrypt(password, buf) {
     const header = new Uint8Array(buf.slice(0, 4));
 
@@ -711,7 +825,8 @@ async function tryDecrypt(password, buf) {
         const iv     = new Uint8Array(buf.slice(FMT_MAGIC.ivStart,   FMT_MAGIC.ivEnd));
         const cipher = buf.slice(FMT_MAGIC.cipherStart);
         const key    = await deriveKey(password, salt);
-        return crypto.subtle.decrypt({ name:'AES-GCM', iv, additionalData: buildAAD(MAGIC_C, salt) }, key, cipher);
+        const plaintext = await crypto.subtle.decrypt({ name:'AES-GCM', iv, additionalData: buildAAD(MAGIC_C, salt) }, key, cipher);
+        return { plaintext, salt };
     }
 
     if (matchesMagic(header, MAGIC_B)) {
@@ -719,7 +834,8 @@ async function tryDecrypt(password, buf) {
         const iv     = new Uint8Array(buf.slice(FMT_MAGIC.ivStart,   FMT_MAGIC.ivEnd));
         const cipher = buf.slice(FMT_MAGIC.cipherStart);
         const key    = await deriveKey(password, salt);
-        return crypto.subtle.decrypt({ name:'AES-GCM', iv }, key, cipher);
+        const plaintext = await crypto.subtle.decrypt({ name:'AES-GCM', iv }, key, cipher);
+        return { plaintext, salt };
     }
 
     // Format A (legacy, no magic header)
@@ -727,7 +843,8 @@ async function tryDecrypt(password, buf) {
     const iv     = new Uint8Array(buf.slice(FMT_LEGACY.ivStart,   FMT_LEGACY.ivEnd));
     const cipher = buf.slice(FMT_LEGACY.cipherStart);
     const key    = await deriveKey(password, salt);
-    return crypto.subtle.decrypt({ name:'AES-GCM', iv }, key, cipher);
+    const plaintext = await crypto.subtle.decrypt({ name:'AES-GCM', iv }, key, cipher);
+    return { plaintext, salt };
 }
 
 // ── Strength ───────────────────────────────────────────────────────────────
@@ -747,6 +864,51 @@ function updateStrength() {
     bar.style.background = colors[s];
     label.textContent    = labels[s];
     label.style.color    = colors[s];
+}
+
+// ── Local auto-save ─────────────────────────────────────────────────────────
+// Builds the same on-disk blob format as an exported .vault file (magic +
+// salt + iv + ciphertext), shared by downloadVault() and persistVault() so
+// there's one source of truth for the container format.
+async function encryptVaultBlob(pwd, salt) {
+    const iv    = crypto.getRandomValues(new Uint8Array(12));
+    const key   = await deriveKey(pwd, salt);
+    const aad   = buildAAD(MAGIC_C, salt);
+    const title = document.getElementById('vaultTitle').value.trim() || 'vault';
+    const plaintext = new TextEncoder().encode(JSON.stringify({
+        metadata: { title, version: APP_VERSION, timestamp: new Date().toISOString() },
+        files:    vaultFiles
+    }));
+    const cipher = await crypto.subtle.encrypt({ name:'AES-GCM', iv, additionalData: aad }, key, plaintext);
+    const combined = new Uint8Array(MAGIC_C.length + salt.length + iv.length + cipher.byteLength);
+    combined.set(MAGIC_C, 0);
+    combined.set(salt, MAGIC_C.length);
+    combined.set(iv, MAGIC_C.length + salt.length);
+    combined.set(new Uint8Array(cipher), MAGIC_C.length + salt.length + iv.length);
+    return combined;
+}
+
+// Auto-saves to this device after every change. Uses activePassword/activeSalt
+// (set once per unlock) rather than the live #password field, so retyping
+// that field to export under a different password can't corrupt this vault's
+// local copy. A save failure (e.g. IndexedDB unavailable in private mode) is
+// non-fatal — Export/Import still work without it.
+async function persistVault() {
+    if (!activePassword || !activeSalt) return;
+    try {
+        const combined = await encryptVaultBlob(activePassword, activeSalt);
+        await idbSet(IDB_KEY, combined);
+    } catch (e) {
+        console.error('Local auto-save failed:', e);
+    }
+}
+
+// Re-renders and auto-saves — use after any change to vaultFiles/metadata.
+// Plain renderTree() alone is for view/sort/search changes that don't touch
+// the underlying data.
+function markDirty() {
+    renderTree();
+    persistVault();
 }
 
 // ── Reset ──────────────────────────────────────────────────────────────────
@@ -811,7 +973,8 @@ async function addFile() {
                 trashedAt: null
             });
         });
-        if (currentView !== 'files') setView('files'); else { document.getElementById('searchInput').value = ''; renderTree(); }
+        if (currentView !== 'files') { setView('files'); persistVault(); }
+        else { document.getElementById('searchInput').value = ''; markDirty(); }
         fileInput.value = '';
         await modalAlert(`✅ ${files.length} file${files.length!==1?'s':''} added to "${path}".`);
     } catch (err) {
@@ -825,7 +988,7 @@ async function renameFile(id) {
     if (!f) return;
     const n = await modalPrompt('New filename:', f.name);
     if (n !== null && n.trim() && n.trim() !== f.name) {
-        f.name = n.trim(); f.modified = new Date().toISOString(); renderTree();
+        f.name = n.trim(); f.modified = new Date().toISOString(); markDirty();
     }
 }
 async function editTags(id) {
@@ -834,7 +997,7 @@ async function editTags(id) {
     const s = await modalPrompt('Tags (comma-separated):', f.tags.join(', '));
     if (s !== null) {
         f.tags = s.split(',').map(t => t.trim()).filter(Boolean);
-        f.modified = new Date().toISOString(); renderTree();
+        f.modified = new Date().toISOString(); markDirty();
     }
 }
 async function moveFile(id) {
@@ -842,14 +1005,14 @@ async function moveFile(id) {
     if (!f) return;
     const p = await modalPrompt('New folder path:', f.path);
     if (p !== null && p.trim() !== f.path) {
-        f.path = normalisePath(p); f.modified = new Date().toISOString(); renderTree();
+        f.path = normalisePath(p); f.modified = new Date().toISOString(); markDirty();
     }
 }
 function toggleFavorite(id) {
     const f = vaultFiles.find(x => x.id === id);
     if (!f) return;
     f.favorite = !f.favorite;
-    renderTree();
+    markDirty();
 }
 // Soft-delete: files move to the Recycle Bin and can be restored, so this
 // needs no confirmation — unlike the permanent delete below.
@@ -857,19 +1020,19 @@ function trashFile(id) {
     const f = vaultFiles.find(x => x.id === id);
     if (!f) return;
     f.trashed = true; f.trashedAt = new Date().toISOString();
-    renderTree();
+    markDirty();
 }
 function restoreFile(id) {
     const f = vaultFiles.find(x => x.id === id);
     if (!f) return;
     f.trashed = false; f.trashedAt = null; f.modified = new Date().toISOString();
-    renderTree();
+    markDirty();
 }
 async function deleteForever(id) {
     const f = vaultFiles.find(x => x.id === id);
     if (!f) return;
     if (await modalConfirm(`Permanently delete "${f.name}"? This can't be undone.`, 'Delete forever', true)) {
-        vaultFiles = vaultFiles.filter(x => x.id !== id); renderTree();
+        vaultFiles = vaultFiles.filter(x => x.id !== id); markDirty();
     }
 }
 async function renameFolderPrompt(folderPath) {
@@ -885,12 +1048,111 @@ async function renameFolderPrompt(folderPath) {
         } else { return; }
         f.modified = new Date().toISOString();
     });
-    renderTree();
+    markDirty();
 }
-async function closeVault() {
-    if (!await modalConfirm('Close vault and clear all files from memory?', 'Close & Clear', true)) return;
-    vaultFiles = []; _clearKeyCache(); resetUI(); renderTree();
-    await modalAlert('✅ Vault closed. Memory cleared.');
+
+// ── Lock / unlock ────────────────────────────────────────────────────────
+function enterVault() {
+    vaultUnlocked = true;
+    document.getElementById('landing').style.display = 'none';
+    document.getElementById('appShell').style.display = 'flex';
+    setView('files');
+}
+
+async function lockVault() {
+    if (!await modalConfirm('Lock the vault and clear it from memory? Your encrypted copy stays saved on this device.', 'Lock Vault', true)) return;
+    await persistVault();
+    vaultFiles = [];
+    activeSalt = null;
+    activePassword = null;
+    _clearKeyCache();
+    vaultUnlocked = false;
+    resetUI();
+    document.getElementById('appShell').style.display = 'none';
+    document.getElementById('landing').style.display = 'flex';
+    await refreshLandingState();
+    await modalAlert('🔒 Vault locked. Memory cleared.');
+}
+
+async function refreshLandingState() {
+    const unlockBtn = document.getElementById('unlockVaultBtn');
+    const sub       = document.getElementById('unlockVaultSub');
+    let hasLocalVault = false;
+    try { hasLocalVault = !!(await idbGet(IDB_KEY)); } catch { hasLocalVault = false; }
+    unlockBtn.disabled = !hasLocalVault;
+    sub.textContent = hasLocalVault
+        ? 'Enter your master password to unlock the vault saved on this device'
+        : 'No vault found on this device yet';
+}
+
+async function startNewVault() {
+    let hasLocalVault = false;
+    try { hasLocalVault = !!(await idbGet(IDB_KEY)); } catch { hasLocalVault = false; }
+    if (hasLocalVault) {
+        const ok = await modalConfirm(
+            'This device already has a vault. Creating a new one will replace it — the old one will be lost unless you\'ve exported a backup.',
+            'Replace & Create New', true
+        );
+        if (!ok) return;
+    }
+
+    const pwd1 = await modalPromptPassword('Choose a master password for your new vault:', 'Master password');
+    if (!pwd1) return;
+    if (pwd1.length < 8) { await modalAlert('❌ Use at least 8 characters for your master password.'); return; }
+    const pwd2 = await modalPromptPassword('Confirm your master password:', 'Confirm password');
+    if (pwd2 === null) return;
+    if (pwd1 !== pwd2) { await modalAlert('❌ Passwords did not match. Please try again.'); return; }
+
+    activeSalt     = crypto.getRandomValues(new Uint8Array(16));
+    activePassword = pwd1;
+    vaultFiles     = [];
+    document.getElementById('vaultTitle').value = 'Personal Secure Vault';
+    document.getElementById('password').value   = pwd1;
+    updateStrength();
+    enterVault();
+    await persistVault();
+}
+
+async function unlockVaultFlow() {
+    let stored;
+    try { stored = await idbGet(IDB_KEY); } catch { stored = null; }
+    if (!stored) { await modalAlert('No vault found on this device.'); return; }
+
+    const pwd = await modalPromptPassword('Enter your master password to unlock:', 'Master password');
+    if (!pwd) return;
+
+    const buf = stored.buffer ? stored.buffer : stored;
+    if (buf.byteLength < MIN_VAULT_BYTES) {
+        await modalAlert('❌ The vault saved on this device is corrupted or incomplete.');
+        return;
+    }
+
+    let result;
+    try {
+        result = await tryDecrypt(pwd, buf);
+    } catch {
+        await modalAlert('❌ Wrong password, or the local vault data is corrupted.');
+        return;
+    }
+
+    try {
+        const imported = JSON.parse(new TextDecoder().decode(result.plaintext));
+        const rawFiles = Array.isArray(imported.files) ? imported.files : [];
+        vaultFiles = rawFiles.filter(isValidFileEntry).map(sanitiseEntry);
+
+        activeSalt     = result.salt;
+        activePassword = pwd;
+
+        const importedTitle = imported.metadata?.title;
+        document.getElementById('vaultTitle').value =
+            (typeof importedTitle === 'string' && importedTitle.trim()) ? importedTitle.trim() : 'Personal Secure Vault';
+        document.getElementById('password').value = pwd;
+        updateStrength();
+
+        enterVault();
+    } catch {
+        await modalAlert('❌ The vault saved on this device is corrupted or in an unrecognised format.');
+    }
 }
 
 // ── Path helpers ───────────────────────────────────────────────────────────
@@ -1202,27 +1464,15 @@ async function downloadVault() {
     const pwd = document.getElementById('password').value;
     if (!pwd) { await modalAlert('Enter a master password before exporting.'); return; }
 
-    const title    = document.getElementById('vaultTitle').value.trim() || 'vault';
     // Matches: echo "${APP}-${VERSION}-$(date -u +%Y%m%dT%H%MZ)"
     const fileName = `${APP}-${APP_VERSION}-${utcTimestamp()}.vault`;
 
-    const salt = crypto.getRandomValues(new Uint8Array(16));
-    const iv   = crypto.getRandomValues(new Uint8Array(12));
-    const key  = await deriveKey(pwd, salt);
-    const aad  = buildAAD(MAGIC_C, salt);
-
-    const plaintext = new TextEncoder().encode(JSON.stringify({
-        metadata: { title, version: APP_VERSION, timestamp: new Date().toISOString() },
-        files:    vaultFiles
-    }));
-
-    const cipher = await crypto.subtle.encrypt(
-        { name:'AES-GCM', iv, additionalData: aad },
-        key,
-        plaintext
-    );
-
-    const blob = new Blob([MAGIC_C, salt, iv, cipher], { type: 'application/octet-stream' });
+    // Exporting under a password other than the active one (typed into the
+    // field just for this export) still works — it just doesn't affect the
+    // local auto-saved copy, which stays under activePassword/activeSalt.
+    const salt   = (pwd === activePassword && activeSalt) ? activeSalt : crypto.getRandomValues(new Uint8Array(16));
+    const combined = await encryptVaultBlob(pwd, salt);
+    const blob = new Blob([combined], { type: 'application/octet-stream' });
 
     // FIX #12: showSaveFilePicker hides the tab too — save password value
     // before the picker opens so the visibility timer can't interfere.
@@ -1300,9 +1550,9 @@ async function loadVault() {
         return;
     }
 
-    let dec;
+    let result;
     try {
-        dec = await tryDecrypt(pwd, arrayBuf);
+        result = await tryDecrypt(pwd, arrayBuf);
     } catch {
         await modalAlert('❌ Wrong password, or this file is corrupted / not a vault.');
         return;
@@ -1312,7 +1562,7 @@ async function loadVault() {
     updateStrength();
 
     try {
-        const imported  = JSON.parse(new TextDecoder().decode(dec));
+        const imported  = JSON.parse(new TextDecoder().decode(result.plaintext));
         const rawFiles  = Array.isArray(imported.files) ? imported.files : [];
 
         const validFiles   = [];
@@ -1327,13 +1577,18 @@ async function loadVault() {
 
         vaultFiles = validFiles;
 
+        // Restoring a backup replaces this device's local vault too — both
+        // its password and salt become the newly restored file's own.
+        activeSalt     = result.salt;
+        activePassword = pwd;
+
         // FIX #7: type-check title before writing to DOM
         const importedTitle = imported.metadata?.title;
-        if (typeof importedTitle === 'string' && importedTitle.trim()) {
-            document.getElementById('vaultTitle').value = importedTitle.trim();
-        }
+        document.getElementById('vaultTitle').value =
+            (typeof importedTitle === 'string' && importedTitle.trim()) ? importedTitle.trim() : 'Personal Secure Vault';
 
-        setView('files');
+        if (!vaultUnlocked) enterVault(); else setView('files');
+        await persistVault();
 
         const warn = invalidCount > 0
             ? `\n⚠️ ${invalidCount} malformed entr${invalidCount!==1?'ies':'y'} were skipped.`
@@ -1366,8 +1621,10 @@ document.addEventListener('visibilitychange', () => {
 });
 
 // ── Init ───────────────────────────────────────────────────────────────────
+// The vault stays locked (landing screen) until New/Restore/Unlock succeeds —
+// renderTree() only runs once enterVault() shows the app shell.
 setupPWA();
-renderTree();
+refreshLandingState();
 </script>
 </body>
 </html>
